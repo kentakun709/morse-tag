@@ -186,10 +186,30 @@
   .light-status { min-height: 1.5em; margin: -8px 0 0; color: #aeb6c1; font-size: .72rem; line-height: 1.5; }
   #screen-flash {
     position: fixed; inset: 0; z-index: 9999; display: none;
-    background: transparent; cursor: pointer; touch-action: manipulation;
+    background: transparent; pointer-events: none;
   }
   #screen-flash.running { display: block; }
   #screen-flash.on { background: #fff; }
+  #screen-flash-stop {
+    position: fixed; top: max(10px, env(safe-area-inset-top)); right: 10px;
+    z-index: 10000; display: none; min-width: 56px; padding: 7px 11px;
+    border: 1px solid #fff; border-radius: 999px; background: #9f2020;
+    color: #fff; font-weight: 700; line-height: 1; pointer-events: auto;
+    touch-action: manipulation;
+  }
+  #screen-flash.running + #screen-flash-stop { display: block; }
+  #fatal-error {
+    position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 99999;
+    max-height: 30vh; overflow: auto; padding: 10px 42px 10px 12px;
+    border-radius: 10px; background: #3a0d0d; color: #ffd6d6;
+    font: 12px/1.5 monospace; white-space: pre-wrap; word-break: break-all;
+    pointer-events: none;
+  }
+  #fatal-error-close {
+    position: absolute; top: 6px; right: 6px; width: 30px; height: 30px;
+    padding: 0; border: 1px solid #ffd6d6; border-radius: 50%;
+    background: #641717; color: #fff; pointer-events: auto; cursor: pointer;
+  }
   @media (max-width: 360px) {
     .app { padding-inline: 7px; }
     .panel { padding: 13px; }
@@ -216,6 +236,8 @@
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
   }
 </style>
+
+<div id="fatal-error" role="alert" hidden><button id="fatal-error-close" type="button" aria-label="エラー表示を閉じる">×</button><span id="fatal-error-message"></span></div>
 
 <main class="app">
   <header class="app-header">
@@ -260,6 +282,7 @@
     <p class="eyebrow">選んだ文字</p>
     <p class="readout"><span class="letter" id="explore-letter">E</span>&nbsp; <span id="explore-code">・</span></p>
     <p class="instruction">プレートの文字を押すと、根から光と音が順番にたどります。</p>
+    <p class="status" id="explore-status" aria-live="polite"></p>
   </section>
 
   <section class="panel" id="panel-key" role="tabpanel" aria-labelledby="tab-key" hidden>
@@ -311,8 +334,24 @@
   </details>
 </main>
 
-<div id="screen-flash" role="button" tabindex="-1" aria-label="画面フラッシュを停止"></div>
+<div id="screen-flash" aria-hidden="true"></div>
+<button id="screen-flash-stop" type="button">停止</button>
 
+<script>
+window.showFatalError = function (error, line) {
+  var box = document.getElementById('fatal-error');
+  var message = document.getElementById('fatal-error-message');
+  if (!box || !message) return;
+  var detail = error && (error.stack || error.message) || String(error || '不明なエラー');
+  message.textContent = 'エラー（この画面をスクショで送ってください）\n' + detail + '\n行: ' + (line || '?') + '\n' + navigator.userAgent;
+  box.hidden = false;
+};
+document.getElementById('fatal-error-close').addEventListener('click', function () {
+  document.getElementById('fatal-error').hidden = true;
+});
+window.addEventListener('error', function (e) { window.showFatalError(e.error || e.message, e.lineno); });
+window.addEventListener('unhandledrejection', function (e) { window.showFatalError(e.reason, 'Promise'); });
+</script>
 <script>
 (() => {
   'use strict';
@@ -495,7 +534,7 @@
       if (code.length === 1) continue;
       const parent = reverse[code.slice(0, -1)];
       const actual = direction(POS[parent], POS[letter]);
-      const mark = code.at(-1);
+      const mark = code[code.length - 1];
       const expected = code[0] === '.' ? (mark === '.' ? 'right' : 'down') : (mark === '-' ? 'left' : 'down');
       if (actual !== expected && !(letter === 'F' && actual === 'down')) {
         throw new Error(`${letter}: 親 ${parent} からの方向が ${actual}（期待値 ${expected}）です。`);
@@ -587,7 +626,7 @@
     const morseTokens = [];
     for (let i = 0; i < roman.length; i++) {
       const char = roman[i];
-      if (char === ' ') { if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
+      if (char === ' ') { if ((morseTokens[morseTokens.length - 1] || {}).char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
       const morseChar = char.toUpperCase();
       const code = ALL_MORSE[morseChar];
       if (code) morseTokens.push({ char: morseChar, code, sourceIndex: map[i] });
@@ -629,7 +668,7 @@
     for (let i = 0; i < roman.length; i++) {
       const char = roman[i].toUpperCase();
       if (char === ' ') {
-        if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+        if ((morseTokens[morseTokens.length - 1] || {}).char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
         continue;
       }
       const code = ALL_MORSE[char];
@@ -906,10 +945,21 @@
   async function audio() {
     if (!document.querySelector('#sound-on').checked) return null;
     try {
-      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) throw new Error('AudioContext is not supported');
+      if (!audioContext) audioContext = new AudioContextClass();
       if (audioContext.state === 'suspended') await audioContext.resume();
       return audioContext;
-    } catch (_) { return null; }
+    } catch (error) {
+      console.error('AudioContextの開始に失敗しました:', error);
+      clearTimersAndLights();
+      const status = document.querySelector(`#panel-${mode} .status`) || document.querySelector('#light-status');
+      if (status) {
+        status.textContent = '音を開始できませんでした（マナーモード・消音を確認）';
+        if (status.classList.contains('status')) status.className = 'status bad';
+      }
+      return null;
+    }
   }
 
   function stopSound(sound) {
@@ -1127,89 +1177,116 @@
     if (next === 'key') document.querySelector('#telegraph-key').focus();
   }
 
-  buildPlate();
-  const safeValidate = () => { try { validateModel(); } catch (error) { console.warn('配置チェック:', error.message); } };
-  safeValidate();
-  document.fonts?.ready.then(safeValidate);
-  document.querySelector('#key-prompt').textContent = keyPrompt;
-  node('E').classList.add('active');
+  function reportStartupError(part, error) {
+    console.error(`${part}に失敗しました:`, error);
+    window.showFatalError(error, part);
+  }
 
-  nodesLayer.addEventListener('click', event => {
+  function registerEvents() {
+    nodesLayer.addEventListener('click', event => {
     const target = event.target.closest('.morse-node');
     if (target) onNodeChoose(target.dataset.letter);
-  });
-  nodesLayer.addEventListener('keydown', event => {
+    });
+    nodesLayer.addEventListener('keydown', event => {
     const target = event.target.closest('.morse-node');
     if (target && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onNodeChoose(target.dataset.letter); }
-  });
-  document.querySelector('.tabs').addEventListener('click', event => {
+    });
+    document.querySelector('.tabs').addEventListener('click', event => {
     const tab = event.target.closest('.tab');
     if (tab) switchMode(tab.dataset.mode);
-  });
-  document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('keydown', event => {
+    });
+    document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('keydown', event => {
     if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
     const tabs = [...document.querySelectorAll('.tab')];
     const delta = event.key === 'ArrowRight' ? 1 : -1;
     const next = tabs[(tabs.indexOf(tab) + delta + tabs.length) % tabs.length];
     switchMode(next.dataset.mode); next.focus();
-  }));
+    }));
 
-  const keyButton = document.querySelector('#telegraph-key');
-  keyButton.addEventListener('pointerdown', event => { event.preventDefault(); keyButton.setPointerCapture(event.pointerId); beginKey(); });
-  keyButton.addEventListener('pointerup', endKey);
-  keyButton.addEventListener('pointercancel', cancelKeyPress);
-  window.addEventListener('keydown', event => {
+    const keyButton = document.querySelector('#telegraph-key');
+    if (window.PointerEvent) {
+      keyButton.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        beginKey();
+        try { keyButton.setPointerCapture(event.pointerId); } catch (error) { console.error('pointer captureに失敗しました:', error); }
+      });
+      keyButton.addEventListener('pointerup', endKey);
+      keyButton.addEventListener('pointercancel', cancelKeyPress);
+    } else {
+      keyButton.addEventListener('touchstart', event => { event.preventDefault(); beginKey(); }, { passive: false });
+      keyButton.addEventListener('touchend', event => { event.preventDefault(); endKey(); }, { passive: false });
+      keyButton.addEventListener('touchcancel', cancelKeyPress);
+      keyButton.addEventListener('mousedown', event => { event.preventDefault(); beginKey(); });
+      window.addEventListener('mouseup', endKey);
+    }
+    window.addEventListener('keydown', event => {
     if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) {
       event.preventDefault();
       if (!event.repeat) beginKey();
     }
-  });
-  window.addEventListener('keyup', event => {
+    });
+    window.addEventListener('keyup', event => {
     if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) { event.preventDefault(); endKey(); }
-  });
+    });
 
-  document.querySelector('#play-quiz').addEventListener('click', () => {
+    document.querySelector('#play-quiz').addEventListener('click', () => {
     if (!quizTarget) quizTarget = chooseWeightedQuestion();
     document.querySelector('#quiz-mark').textContent = '？？';
     document.querySelector('#quiz-status').textContent = '再生中。文字を選んでください。';
     document.querySelector('#quiz-status').className = 'status';
     document.querySelector('#play-quiz').textContent = 'もう一度聞く';
     playPath(quizTarget, document.querySelector('#quiz-light').checked);
-  });
-  document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
-  document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
-  document.querySelector('#signal-light').addEventListener('change', async event => {
+    });
+    document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
+    document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+    document.querySelector('#signal-light').addEventListener('change', async event => {
     if (event.target.checked) await enableSignalLight();
     else disableSignalLight();
-  });
-  document.querySelector('#screen-flash').addEventListener('pointerdown', () => {
+    });
+    document.querySelector('#screen-flash-stop').addEventListener('click', () => {
     clearTimersAndLights();
     if (mode === 'convert') document.querySelector('#convert-status').textContent = '停止しました';
-  });
-  document.addEventListener('visibilitychange', () => {
+    });
+    document.addEventListener('visibilitychange', () => {
     if (!document.hidden) return;
     clearTimersAndLights();
     if (document.querySelector('#signal-light').checked) {
       document.querySelector('#signal-light').checked = false;
       disableSignalLight('ページが非表示になったため停止しました');
     }
-  });
+    });
 
-  document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
-  document.querySelector('#play-convert').addEventListener('click', playConversion);
-  document.querySelector('#stop-convert').addEventListener('click', () => {
+    document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
+    document.querySelector('#play-convert').addEventListener('click', playConversion);
+    document.querySelector('#stop-convert').addEventListener('click', () => {
     clearTimersAndLights();
     document.querySelector('#convert-status').textContent = '停止しました';
-  });
-  document.querySelector('#copy-convert').addEventListener('click', copyConversion);
-  renderConversion();
-  // 読み込み前はかな例文を描画し、その後に新しい漢字入り初期例文を変換する。
-  setTimeout(() => {
-    const input = document.querySelector('#convert-input');
-    input.value = '今日は良い天気';
-    scheduleConversion();
-  }, 0);
-  if (mode === 'explore') node('E').classList.add('active');
+    });
+    document.querySelector('#copy-convert').addEventListener('click', copyConversion);
+  }
+
+  try { registerEvents(); } catch (error) { reportStartupError('イベント登録', error); }
+  try { buildPlate(); } catch (error) { reportStartupError('プレート生成', error); }
+  const safeValidate = () => {
+    try { validateModel(); } catch (error) { reportStartupError('配置チェック', error); }
+  };
+  safeValidate();
+  if (document.fonts?.ready) document.fonts.ready.then(safeValidate).catch(error => reportStartupError('フォント読み込み後の配置チェック', error));
+  try {
+    document.querySelector('#key-prompt').textContent = keyPrompt;
+    if (mode === 'explore') node('E')?.classList.add('active');
+  } catch (error) { reportStartupError('初期表示', error); }
+  try {
+    renderConversion();
+    // 読み込み前はかな例文を描画し、その後に新しい漢字入り初期例文を変換する。
+    setTimeout(() => {
+      try {
+        const input = document.querySelector('#convert-input');
+        input.value = '今日は良い天気';
+        scheduleConversion();
+      } catch (error) { reportStartupError('変換初期化', error); }
+    }, 0);
+  } catch (error) { reportStartupError('変換初期化', error); }
 
   // 追加仕様に記載された変換の自己テスト。
   console.assert(convertText('こんにちは').roman.toUpperCase() === 'KONNICHIHA', 'こんにちは → KONNICHIHA');

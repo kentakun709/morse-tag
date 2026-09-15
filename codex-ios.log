@@ -1,0 +1,2787 @@
+Reading additional input from stdin...
+2026-09-15T08:43:32.119265Z ERROR codex_core::session::session: failed to load skill C:\Users\kenta\.codex\skills\article-lp-decoration\SKILL.md: missing YAML frontmatter delimited by ---
+OpenAI Codex v0.154.0
+--------
+workdir: C:\dev\morse-tag
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a0a43c-5039-7912-aeb1-07331d2e7ad8
+--------
+user
+index.html がスマホ（主にiPhone Safari、iOS 15〜18想定）で『動かない』と報告された。編集禁止、調査のみ。1) iOS Safariで構文エラーや未対応APIになり得る箇所（正規表現lookbehind、?.以外の新構文、static block、Array.at、structuredClone、replaceAll、navigator.wakeLock直呼び、getUserMedia/torch、AudioContext、pointer系、svh等）を行番号付きで列挙し、スクリプト全体が止まる致命的なものを最上位に。2) タップが効かなくなる経路（初期化中の例外で後続のaddEventListenerに到達しない等）を特定。3) 直し方を具体的に。重大度順・最大8件・日本語。
+codex
+結論優先で、`index.html` とリポジトリ固有の指示を読み、iOS 15〜18の「パース時停止」「初期化例外」「機能単位の非対応」に分けて追います。編集は行いません。
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-ChildItem -Force; if (Test-Path -LiteralPath .\\AGENTS.md) { Get-Content -LiteralPath .\\AGENTS.md -Raw }; "'$p=(Resolve-Path -LiteralPath .'"\\index.html).Path; Write-Output \"INDEX="'$p"; (Get-Content -LiteralPath $p | Measure-Object -Line).Lines' in C:\dev\morse-tag
+ succeeded in 1175ms:
+
+
+    Directory: C:\dev\morse-tag
+
+
+Mode                 LastWriteTime         Length Name                                                                 
+----                 -------------         ------ ----                                                                 
+d--h--         9/15/2026   5:42 PM                .git                                                                 
+d-----         9/15/2026   4:54 PM                docs                                                                 
+-a----         9/15/2026   4:55 PM             29 .gitattributes                                                       
+-a----         9/15/2026   5:43 PM              0 codex-ios.log                                                        
+-a----         9/15/2026   5:40 PM          57308 index.html                                                           
+-a----         9/15/2026   4:54 PM            509 README.md                                                            
+INDEX=C:\dev\morse-tag\index.html
+1169
+
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$patterns='"'(?<=|(?<"'!|'"\\?\\.|static\\s*\\{|\\.at\\s*\\(|structuredClone|replaceAll|wakeLock|getUserMedia|torch|AudioContext|webkitAudioContext|pointer|svh|dvh|lvh|addEventListener|DOMContentLoaded|async |await |class |=>|\\.flat\\s*\\(|\\.flatMap\\s*\\(|Object\\.fromEntries|Promise\\.(allSettled|any)|AbortController|ResizeObserver|IntersectionObserver|visualViewport|crypto\\.randomUUID'; rg -n -i --pcre2 "'$patterns index.html' in C:\dev\morse-tag
+ exited 1 in 3672ms:
+rg : The term 'rg' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the 
+spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:2 char:375
++ ... r|IntersectionObserver|visualViewport|crypto\.randomUUID'; rg -n -i - ...
++                                                                ~~
+    + CategoryInfo          : ObjectNotFound: (rg:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+
+codex
+`rg` がない環境なので PowerShell の行検索に切り替えます。まず互換性候補を網羅し、その後、初期化順とイベント登録位置をコードフローで確認します。
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$terms=@('"'(?<=','(?<"'!'"','?.','static {','.at(','structuredClone','replaceAll','wakeLock','getUserMedia','torch','AudioContext','webkitAudioContext','pointer','svh','dvh','lvh','addEventListener','DOMContentLoaded','async ','await ','=>','.flat(','flatMap','Object.fromEntries','Promise.allSettled','Promise.any','AbortController','ResizeObserver','IntersectionObserver','visualViewport','randomUUID'); Select-String -LiteralPath .\\index.html -SimpleMatch -Pattern "'$terms | Sort-Object LineNumber | ForEach-Object { '"'{0,4}: {1}' -f "'$_.LineNumber,$_.Line.Trim() }' in C:\dev\morse-tag
+ succeeded in 1182ms:
+  62: #plate { display: block; width: 100%; max-width: 100%; height: auto; max-height: 48vh; max-height: 48svh; margin: 0 auto; filter: drop-shadow(0 18px 24px #0009); }
+  71: .morse-node { cursor: pointer; }
+  73: .morse-node .node-label { fill: var(--silk); font: 600 18px "Saira Semi Condensed", sans-serif; pointer-events: none; }
+ 101: cursor: pointer;
+ 138: cursor: pointer;
+ 148: cursor: pointer;
+ 179: summary { padding: 13px 15px; font-weight: 700; cursor: pointer; }
+ 189: background: transparent; cursor: pointer; touch-action: manipulation;
+ 317: (() => {
+ 359: const reverse = Object.fromEntries(Object.entries(MORSE).map(([letter, code]) => [code, letter]));
+ 367: let audioContext = null;
+ 391: let wakeLock = null;
+ 398: let progress = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, { correct: 0, wrong: 0 }]));
+ 421: const connected = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, new Set()]));
+ 431: const side = letter === 'Z' ? 'right' : ['down', 'up', 'right', 'left'].find(candidate => !connected[letter].has(candidate));
+ 479: letters.some(letter => !POS[letter]) || layout.some(letter => !MORSE[letter])) {
+ 498: const mark = code.at(-1);
+ 505: const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+ 531: function spokenCode(code) { return code.replaceAll('.', '短点、').replaceAll('-', '長音、').replace(/、$/, ''); }
+ 532: function displayCode(code) { return code.replaceAll('.', '・').replaceAll('-', '－'); }
+ 555: const vowel = soFar.match(/[aeiou](?=[^aeiou]*$)/i)?.[0];
+ 567: const doubled = syllable.startsWith('ch') ? 't' : (syllable.match(/^[bcdfghjklmnpqrstvwxyz]/)?.[0] || '');
+ 590: if (char === ' ') { if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
+ 614: [...surface].forEach((char, offset) => errors.push({ index: start + offset, char, type: 'unsupported' }));
+ 618: converted.errors.forEach(error => errors.push({
+ 632: if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+ 643: tokenizerPromise = new Promise((resolve, reject) => {
+ 644: const build = () => {
+ 646: window.kuromoji.builder({ dicPath: KUROMOJI_DIC }).build((error, builtTokenizer) => {
+ 656: script.async = true;
+ 657: script.addEventListener('load', build, { once: true });
+ 658: script.addEventListener('error', () => reject(new Error('Kuromoji を読み込めませんでした')), { once: true });
+ 660: }).catch(error => {
+ 673: return result.morseTokens.map(token => token.char === ' ' ? '/' : (ascii ? token.code : displayCode(token.code))).join(' ');
+ 676: document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+ 685: const errorIndexes = new Set(conversion.errors.map(error => error.index));
+ 687: preview.replaceChildren(...[...conversion.normalized].map((char, index) => {
+ 696: output.replaceChildren(...conversion.morseTokens.flatMap((token, index) => {
+ 702: const kanji = conversion.errors.some(error => error.type === 'kanji');
+ 703: const unsupported = conversion.errors.some(error => error.type === 'unsupported');
+ 708: async function updateConversion(request) {
+ 714: const activeTokenizer = await loadTokenizer();
+ 727: convertDebounceTimer = setTimeout(() => updateConversion(request), 200);
+ 730: document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+ 731: const token = conversion?.morseTokens[tokenIndex];
+ 733: document.querySelector(`#convert-preview [data-source-index="${token.sourceIndex}"]`)?.classList.add('convert-active');
+ 734: document.querySelector(`#convert-output [data-token-index="${tokenIndex}"]`)?.classList.add('convert-active');
+ 738: if (!conversion?.morseTokens.some(token => token.char !== ' ')) return;
+ 747: conversion.morseTokens.forEach((token, tokenIndex) => {
+ 749: later(() => {
+ 750: document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+ 753: [...token.code].forEach((mark, markIndex) => {
+ 756: if (stepLetter) later(() => node(stepLetter)?.classList.add('active'), cursor);
+ 760: if (stepLetter) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+ 765: later(() => {
+ 767: document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+ 772: async function copyConversion() {
+ 776: await navigator.clipboard.writeText(text);
+ 795: document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+ 800: const id = setTimeout(() => { timers.delete(id); fn(); }, delay);
+ 816: async function enableSignalLight() {
+ 822: if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+ 823: const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+ 825: stream.getTracks().forEach(item => item.stop());
+ 829: if (track?.getCapabilities?.().torch) {
+ 832: lightMethod = 'torch';
+ 836: stream.getTracks().forEach(item => item.stop());
+ 838: if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+ 855: async function setSignalLight(on, epoch = lightEpoch) {
+ 857: if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 858: try { await lightTrack.applyConstraints({ advanced: [{ torch: on }] }); } catch (_) {}
+ 866: later(() => setSignalLight(true, epoch), startOffset);
+ 867: later(() => setSignalLight(false, epoch), startOffset + duration);
+ 870: async function acquireWakeLock(epoch) {
+ 871: if (!('wakeLock' in navigator)) return;
+ 873: const lock = await navigator.wakeLock.request('screen');
+ 874: if (epoch !== lightEpoch) { await lock.release(); return; }
+ 875: wakeLock = lock;
+ 876: lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+ 884: acquireWakeLock(epoch);
+ 890: if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 891: lightTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+ 894: if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+ 899: if (lightStream) lightStream.getTracks().forEach(track => track.stop());
+ 906: async function audio() {
+ 909: if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+ 910: if (audioContext.state === 'suspended') await audioContext.resume();
+ 911: return audioContext;
+ 932: async function tone(startOffset, duration, epoch = audioEpoch) {
+ 933: const ctx = await audio();
+ 948: osc.onended = () => activeSounds.delete(sound);
+ 952: async function startHeldTone(epoch) {
+ 953: const ctx = await audio();
+ 965: osc.onended = () => activeSounds.delete(sound);
+ 977: [...code].forEach((mark, i) => {
+ 980: if (showLight) later(() => node(stepLetter)?.classList.add('active'), cursor);
+ 984: if (showLight) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+ 987: if (showLight) later(() => node(letter)?.classList.add('active'), cursor);
+ 988: later(() => endSignalPlayback(epoch), cursor);
+1009: node(quizTarget)?.classList.add('active');
+1019: later(() => el.classList.remove('error'), 430);
+1060: const isPrefix = Object.values(MORSE).some(code => code.startsWith(keySequence));
+1068: if (current) node(current)?.classList.add('active');
+1083: document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+1100: keyNextTimer = setTimeout(() => {
+1120: document.querySelectorAll('.tab').forEach(tab => {
+1125: document.querySelectorAll('.panel').forEach(panel => panel.hidden = panel.id !== `panel-${next}`);
+1126: if (next === 'explore') node(document.querySelector('#explore-letter').textContent)?.classList.add('active');
+1131: const safeValidate = () => { try { validateModel(); } catch (error) { console.warn('配置チェック:', error.message); } };
+1133: document.fonts?.ready.then(safeValidate);
+1137: nodesLayer.addEventListener('click', event => {
+1141: nodesLayer.addEventListener('keydown', event => {
+1145: document.querySelector('.tabs').addEventListener('click', event => {
+1149: document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('keydown', event => {
+1158: keyButton.addEventListener('pointerdown', event => { event.preventDefault(); keyButton.setPointerCapture(event.pointerId); beginKey(); });
+1159: keyButton.addEventListener('pointerup', endKey);
+1160: keyButton.addEventListener('pointercancel', cancelKeyPress);
+1161: window.addEventListener('keydown', event => {
+1167: window.addEventListener('keyup', event => {
+1171: document.querySelector('#play-quiz').addEventListener('click', () => {
+1179: document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
+1180: document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+1181: document.querySelector('#signal-light').addEventListener('change', async event => {
+1182: if (event.target.checked) await enableSignalLight();
+1185: document.querySelector('#screen-flash').addEventListener('pointerdown', () => {
+1189: document.addEventListener('visibilitychange', () => {
+1198: document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
+1199: document.querySelector('#play-convert').addEventListener('click', playConversion);
+1200: document.querySelector('#stop-convert').addEventListener('click', () => {
+1204: document.querySelector('#copy-convert').addEventListener('click', copyConversion);
+1207: setTimeout(() => {
+1219: console.assert(convertText('東京').errors.every(error => error.type === 'kanji') && convertText('東京').errors.length === 2, '東京 → 漢字エラー');
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$lines=Get-Content -LiteralPath .'"\\index.html; for("'$i=300;$i -le $lines.Count;$i++){ '"'{0,4}: {1}' -f "'$i,$lines[$i-1] }' in C:\dev\morse-tag
+ succeeded in 1478ms:
+ 300: 
+ 301:   <details>
+ 302:     <summary>éŸ³ã¨ç·´ç¿’ã®è¨­å®š</summary>
+ 303:     <div class="settings">
+ 304:       <label class="setting-line"><span>é€Ÿåº¦</span><input id="wpm" type="range" min="5" max="30" value="20"><output id="wpm-out">20 WPM</output></label>
+ 305:       <label class="setting-line"><span>å‘¨æ³¢æ•°</span><input id="frequency" type="range" min="400" max="900" step="25" value="600"><output id="frequency-out">600 Hz</output></label>
+ 306:       <label class="switch-line"><span>éŸ³ã‚’é³´ã‚‰ã™</span><input id="sound-on" type="checkbox" checked></label>
+ 307:       <label class="switch-line"><span>èžããƒ¢ãƒ¼ãƒ‰ã§å…‰ã‚’è¡¨ç¤º</span><input id="quiz-light" type="checkbox" checked></label>
+ 308:       <label class="switch-line"><span>å…‰ã§é€ã‚‹</span><input id="signal-light" type="checkbox"></label>
+ 309:       <p class="light-status" id="light-status" aria-live="polite">ã‚ªãƒ•</p>
+ 310:     </div>
+ 311:   </details>
+ 312: </main>
+ 313: 
+ 314: <div id="screen-flash" role="button" tabindex="-1" aria-label="ç”»é¢ãƒ•ãƒ©ãƒƒã‚·ãƒ¥ã‚’åœæ­¢"></div>
+ 315: 
+ 316: <script>
+ 317: (() => {
+ 318:   'use strict';
+ 319: 
+ 320:   // Aâ€“Z ã®å”¯ä¸€ã®ç¬¦å·è¡¨ã€‚æç”»ãƒ»çµŒè·¯ãƒ»åˆ¤å®šã¯ã™ã¹ã¦ã“ã®è¡¨ã‹ã‚‰å°Žå‡ºã™ã‚‹ã€‚
+ 321:   const MORSE = Object.freeze({
+ 322:     A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.',
+ 323:     H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--', N: '-.',
+ 324:     O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-',
+ 325:     V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..'
+ 326:   });
+ 327:   const MORSE_EXTRA = Object.freeze({
+ 328:     0:'-----', 1:'.----', 2:'..---', 3:'...--', 4:'....-', 5:'.....', 6:'-....', 7:'--...', 8:'---..', 9:'----.',
+ 329:     '.':'.-.-.-', ',':'--..--', '?':'..--..', '!':'-.-.--', '/':'-..-.', '(':'-.--.', ')':'-.--.-',
+ 330:     '&':'.-...', ':':'---...', ';':'-.-.-.', '=':'-...-', '+':'.-.-.', '-':'-....-', '_':'..--.-', '"':'.-..-.', "'":'.----.', '@':'.--.-.'
+ 331:   });
+ 332:   const ALL_MORSE = Object.freeze({ ...MORSE, ...MORSE_EXTRA });
+ 333:   const KANA = Object.freeze({
+ 334:     'ã‚':'a','ã„':'i','ã†':'u','ãˆ':'e','ãŠ':'o', 'ã‹':'ka','ã':'ki','ã':'ku','ã‘':'ke','ã“':'ko',
+ 335:     'ã•':'sa','ã—':'shi','ã™':'su','ã›':'se','ã':'so', 'ãŸ':'ta','ã¡':'chi','ã¤':'tsu','ã¦':'te','ã¨':'to',
+ 336:     'ãª':'na','ã«':'ni','ã¬':'nu','ã­':'ne','ã®':'no', 'ã¯':'ha','ã²':'hi','ãµ':'fu','ã¸':'he','ã»':'ho',
+ 337:     'ã¾':'ma','ã¿':'mi','ã‚€':'mu','ã‚':'me','ã‚‚':'mo', 'ã‚„':'ya','ã‚†':'yu','ã‚ˆ':'yo',
+ 338:     'ã‚‰':'ra','ã‚Š':'ri','ã‚‹':'ru','ã‚Œ':'re','ã‚':'ro', 'ã‚':'wa','ã‚’':'o','ã‚“':'n',
+ 339:     'ãŒ':'ga','ãŽ':'gi','ã':'gu','ã’':'ge','ã”':'go', 'ã–':'za','ã˜':'ji','ãš':'zu','ãœ':'ze','ãž':'zo',
+ 340:     'ã ':'da','ã¢':'ji','ã¥':'zu','ã§':'de','ã©':'do', 'ã°':'ba','ã³':'bi','ã¶':'bu','ã¹':'be','ã¼':'bo',
+ 341:     'ã±':'pa','ã´':'pi','ã·':'pu','ãº':'pe','ã½':'po', 'ã‚”':'vu',
+ 342:     'ãã‚ƒ':'kya','ãã‚…':'kyu','ãã‚‡':'kyo','ã—ã‚ƒ':'sha','ã—ã‚…':'shu','ã—ã‚‡':'sho','ã¡ã‚ƒ':'cha','ã¡ã‚…':'chu','ã¡ã‚‡':'cho',
+ 343:     'ã«ã‚ƒ':'nya','ã«ã‚…':'nyu','ã«ã‚‡':'nyo','ã²ã‚ƒ':'hya','ã²ã‚…':'hyu','ã²ã‚‡':'hyo','ã¿ã‚ƒ':'mya','ã¿ã‚…':'myu','ã¿ã‚‡':'myo',
+ 344:     'ã‚Šã‚ƒ':'rya','ã‚Šã‚…':'ryu','ã‚Šã‚‡':'ryo','ãŽã‚ƒ':'gya','ãŽã‚…':'gyu','ãŽã‚‡':'gyo','ã˜ã‚ƒ':'ja','ã˜ã‚…':'ju','ã˜ã‚‡':'jo',
+ 345:     'ã¢ã‚ƒ':'ja','ã¢ã‚…':'ju','ã¢ã‚‡':'jo','ã³ã‚ƒ':'bya','ã³ã‚…':'byu','ã³ã‚‡':'byo','ã´ã‚ƒ':'pya','ã´ã‚…':'pyu','ã´ã‚‡':'pyo',
+ 346:     'ã—ã‡':'she','ã˜ã‡':'je','ã¡ã‡':'che','ãµã':'fa','ãµãƒ':'fi','ãµã‡':'fe','ãµã‰':'fo','ã¦ãƒ':'ti','ã§ãƒ':'di',
+ 347:     'ã¨ã…':'tu','ã©ã…':'du','ã†ãƒ':'wi','ã†ã‡':'we','ã†ã‰':'wo','ãã':'kwa','ããƒ':'kwi','ãã‡':'kwe','ãã‰':'kwo',
+ 348:     'ãã':'gwa','ããƒ':'gwi','ãã‡':'gwe','ãã‰':'gwo','ã¤ã':'tsa','ã¤ãƒ':'tsi','ã¤ã‡':'tse','ã¤ã‰':'tso',
+ 349:     'ã‚”ã':'va','ã‚”ãƒ':'vi','ã‚”ã‡':'ve','ã‚”ã‰':'vo'
+ 350:   });
+ 351: 
+ 352:   // å†™çœŸã®ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆåº§æ¨™ã€‚path ã¯ä¸Šã®ç¬¦å·è¡¨ã¨èµ·å‹•æ™‚ã«ç…§åˆã™ã‚‹ã€‚
+ 353:   const POS = Object.freeze({
+ 354:     O:[58,192], M:[126,192], T:[198,192], E:[322,192], I:[388,192], S:[448,192], H:[492,192],
+ 355:     G:[126,282], Q:[58,282], Z:[126,340], N:[198,420], K:[126,420], Y:[58,420], C:[126,500],
+ 356:     D:[198,580], X:[126,580], B:[198,670], U:[388,282], F:[388,340], V:[448,282],
+ 357:     A:[322,420], R:[400,420], L:[474,420], W:[322,580], P:[400,580], J:[322,670]
+ 358:   });
+ 359:   const reverse = Object.fromEntries(Object.entries(MORSE).map(([letter, code]) => [code, letter]));
+ 360:   const root = [260,146];
+ 361:   const nodesLayer = document.querySelector('#nodes');
+ 362:   const branchesLayer = document.querySelector('#branches');
+ 363:   const NS = 'http://www.w3.org/2000/svg';
+ 364:   const timers = new Set();
+ 365:   const activeSounds = new Set();
+ 366:   let mode = 'explore';
+ 367:   let audioContext = null;
+ 368:   let audioEpoch = 0;
+ 369:   let heldSound = null;
+ 370:   let keyDownAt = 0;
+ 371:   let keySequence = '';
+ 372:   let keyFinalizeTimer = 0;
+ 373:   let keyNextTimer = 0;
+ 374:   let keyFinalizing = false;
+ 375:   let keyPrompt = randomLetter();
+ 376:   let quizTarget = null;
+ 377:   let quizTotal = 0;
+ 378:   let quizCorrect = 0;
+ 379:   let streak = 0;
+ 380:   let conversion = null;
+ 381:   let tokenizer = null;
+ 382:   let tokenizerPromise = null;
+ 383:   let tokenizerFailed = false;
+ 384:   let convertDebounceTimer = 0;
+ 385:   let conversionRequest = 0;
+ 386:   let kanjiTestsRun = false;
+ 387:   let lightStream = null;
+ 388:   let lightTrack = null;
+ 389:   let lightMethod = 'off';
+ 390:   let lightEpoch = 0;
+ 391:   let wakeLock = null;
+ 392:   let lightInitializing = false;
+ 393:   let flashWarningAccepted = false;
+ 394:   const KANJI_PATTERN = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffã€…ã€†ã€‡]/u;
+ 395:   const KUROMOJI_SCRIPT = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js';
+ 396:   const KUROMOJI_DIC = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/';
+ 397: 
+ 398:   let progress = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, { correct: 0, wrong: 0 }]));
+ 399:   try {
+ 400:     const saved = JSON.parse(localStorage.getItem('morse-tag-progress'));
+ 401:     if (saved && typeof saved === 'object') {
+ 402:       for (const letter of Object.keys(MORSE)) {
+ 403:         if (saved[letter]) progress[letter] = { correct: Number(saved[letter].correct)||0, wrong: Number(saved[letter].wrong)||0 };
+ 404:       }
+ 405:     }
+ 406:   } catch (_) {}
+ 407: 
+ 408:   function svg(name, attrs = {}) {
+ 409:     const el = document.createElementNS(NS, name);
+ 410:     for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
+ 411:     return el;
+ 412:   }
+ 413: 
+ 414:   function direction(from, to) {
+ 415:     const dx = to[0] - from[0];
+ 416:     const dy = to[1] - from[1];
+ 417:     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+ 418:   }
+ 419: 
+ 420:   function layoutGeometry() {
+ 421:     const connected = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, new Set()]));
+ 422:     for (const [letter, code] of Object.entries(MORSE)) {
+ 423:       const parent = reverse[code.slice(0, -1)];
+ 424:       if (!parent) continue;
+ 425:       connected[letter].add(direction(POS[letter], POS[parent]));
+ 426:       connected[parent].add(direction(POS[parent], POS[letter]));
+ 427:     }
+ 428:     const labels = {};
+ 429:     const hits = {};
+ 430:     for (const [letter, [x, y]] of Object.entries(POS)) {
+ 431:       const side = letter === 'Z' ? 'right' : ['down', 'up', 'right', 'left'].find(candidate => !connected[letter].has(candidate));
+ 432:       if (!side) throw new Error(`${letter}: ãƒ©ãƒ™ãƒ«ã‚’ç½®ã‘ã‚‹æ–¹å‘ãŒã‚ã‚Šã¾ã›ã‚“ã€‚`);
+ 433:       const label = side === 'down' ? { x, y: y + 42, anchor: 'middle' } :
+ 434:         side === 'up' ? { x, y: y - 27, anchor: 'middle' } :
+ 435:         side === 'right' ? { x: x + 25, y: y + 6, anchor: 'start' } :
+ 436:         { x: x - 25, y: y + 6, anchor: 'end' };
+ 437:       const halfWidth = Math.max(10, Math.min(20, x - 15, 505 - x));
+ 438:       labels[letter] = label;
+ 439:       hits[letter] = { left: x - halfWidth, right: x + halfWidth, top: y - 22, bottom: y + 22 };
+ 440:     }
+ 441:     return { connected, labels, hits };
+ 442:   }
+ 443: 
+ 444:   function buildPlate() {
+ 445:     const geometry = layoutGeometry();
+ 446:     for (const [letter, code] of Object.entries(MORSE)) {
+ 447:       const [x, y] = POS[letter];
+ 448:       const parentCode = code.slice(0, -1);
+ 449:       const parentLetter = reverse[parentCode];
+ 450:       const [px, py] = parentLetter ? POS[parentLetter] : root;
+ 451:       branchesLayer.append(svg('line', { class: 'branch', x1: px, y1: py, x2: x, y2: y }));
+ 452: 
+ 453:       const group = svg('g', {
+ 454:         class: 'morse-node', id: `node-${letter}`, role: 'button', tabindex: '0',
+ 455:         'aria-label': `${letter}ã€${spokenCode(code)}`, 'data-letter': letter
+ 456:       });
+ 457:       const isDash = code.endsWith('-');
+ 458:       const vertical = letter === 'J';
+ 459:       const hit = geometry.hits[letter];
+ 460:       group.append(svg('rect', { class: 'node-hit', x: hit.left, y: hit.top, width: hit.right-hit.left, height: hit.bottom-hit.top, rx: 10 }));
+ 461:       if (isDash) {
+ 462:         group.append(svg('rect', { class: 'lamp', x: x-(vertical?7:15), y: y-(vertical?15:7), width: vertical?14:30, height: vertical?30:14, rx: 7 }));
+ 463:       } else {
+ 464:         group.append(svg('circle', { class: 'lamp', cx: x, cy: y, r: 9 }));
+ 465:       }
+ 466:       const label = geometry.labels[letter];
+ 467:       const text = svg('text', { class: 'node-label', x: label.x, y: label.y, 'text-anchor': label.anchor });
+ 468:       text.textContent = letter;
+ 469:       group.append(text);
+ 470:       nodesLayer.append(group);
+ 471:     }
+ 472:   }
+ 473: 
+ 474:   function validateModel() {
+ 475:     const letters = Object.keys(MORSE);
+ 476:     const unique = new Set(Object.values(MORSE));
+ 477:     const layout = Object.keys(POS);
+ 478:     if (letters.length !== 26 || unique.size !== 26 || layout.length !== 26 ||
+ 479:         letters.some(letter => !POS[letter]) || layout.some(letter => !MORSE[letter])) {
+ 480:       throw new Error('ç¬¦å·è¡¨ã¨ãƒ—ãƒ¬ãƒ¼ãƒˆé…ç½®ã®æ–‡å­—é›†åˆãŒæ•´åˆã—ã¦ã„ã¾ã›ã‚“ã€‚');
+ 481:     }
+ 482:     for (const letter of letters) {
+ 483:       const code = MORSE[letter];
+ 484:       for (let i = 0; i < code.length; i++) {
+ 485:         if (!reverse[code.slice(0, i + 1)]) throw new Error(`${letter}: è¦ªçµŒè·¯ãŒç¬¦å·è¡¨ã«ã‚ã‚Šã¾ã›ã‚“ã€‚`);
+ 486:       }
+ 487:     }
+ 488:     const at = new Map();
+ 489:     for (const [letter, position] of Object.entries(POS)) {
+ 490:       const key = position.join(',');
+ 491:       if (at.has(key)) throw new Error(`${letter}: ${at.get(key)} ã¨åº§æ¨™ãŒé‡è¤‡ã—ã¦ã„ã¾ã™ã€‚`);
+ 492:       at.set(key, letter);
+ 493:     }
+ 494:     for (const [letter, code] of Object.entries(MORSE)) {
+ 495:       if (code.length === 1) continue;
+ 496:       const parent = reverse[code.slice(0, -1)];
+ 497:       const actual = direction(POS[parent], POS[letter]);
+ 498:       const mark = code.at(-1);
+ 499:       const expected = code[0] === '.' ? (mark === '.' ? 'right' : 'down') : (mark === '-' ? 'left' : 'down');
+ 500:       if (actual !== expected && !(letter === 'F' && actual === 'down')) {
+ 501:         throw new Error(`${letter}: è¦ª ${parent} ã‹ã‚‰ã®æ–¹å‘ãŒ ${actual}ï¼ˆæœŸå¾…å€¤ ${expected}ï¼‰ã§ã™ã€‚`);
+ 502:       }
+ 503:     }
+ 504:     const { labels, hits } = layoutGeometry();
+ 505:     const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+ 506:     const labelBoxes = {};
+ 507:     for (const [letter, label] of Object.entries(labels)) {
+ 508:       const rendered = node(letter).querySelector('.node-label').getBBox();
+ 509:       const box = labelBoxes[letter] = {
+ 510:         left: rendered.x, right: rendered.x + rendered.width,
+ 511:         top: rendered.y, bottom: rendered.y + rendered.height
+ 512:       };
+ 513:       for (const [other, hit] of Object.entries(hits)) {
+ 514:         if (other !== letter && overlaps(box, hit)) throw new Error(`${letter}: ãƒ©ãƒ™ãƒ«ãŒ ${other} ã®å½“ãŸã‚Šåˆ¤å®šã¨é‡ãªã£ã¦ã„ã¾ã™ã€‚`);
+ 515:       }
+ 516:     }
+ 517:     for (const [letter, box] of Object.entries(labelBoxes)) {
+ 518:       for (const [other, otherBox] of Object.entries(labelBoxes)) {
+ 519:         if (letter < other && overlaps(box, otherBox)) throw new Error(`${letter}: ${other} ã¨ãƒ©ãƒ™ãƒ«ãŒé‡ãªã£ã¦ã„ã¾ã™ã€‚`);
+ 520:       }
+ 521:     }
+ 522:     for (const [letter, hit] of Object.entries(hits)) {
+ 523:       if (hit.left < 15 || hit.right > 505) throw new Error(`${letter}: å½“ãŸã‚Šåˆ¤å®šãŒæ¿ã®å¤–ã§ã™ã€‚`);
+ 524:       for (const [other, otherHit] of Object.entries(hits)) {
+ 525:         if (letter < other && overlaps(hit, otherHit)) throw new Error(`${letter}: ${other} ã¨å½“ãŸã‚Šåˆ¤å®šãŒé‡ãªã£ã¦ã„ã¾ã™ã€‚`);
+ 526:       }
+ 527:     }
+ 528:     return true;
+ 529:   }
+ 530: 
+ 531:   function spokenCode(code) { return code.replaceAll('.', 'çŸ­ç‚¹ã€').replaceAll('-', 'é•·éŸ³ã€').replace(/ã€$/, ''); }
+ 532:   function displayCode(code) { return code.replaceAll('.', 'ãƒ»').replaceAll('-', 'ï¼'); }
+ 533:   function toHiragana(char) {
+ 534:     const code = char.codePointAt(0);
+ 535:     return code >= 0x30A1 && code <= 0x30F6 ? String.fromCodePoint(code - 0x60) : char;
+ 536:   }
+ 537:   // DOM ã‚„è¨­å®šå€¤ã«ä¾å­˜ã—ãªã„ç´”ç²‹ãªå¤‰æ›é–¢æ•°ã€‚
+ 538:   function convertText(input) {
+ 539:     const normalized = input.normalize('NFKC').replace(/[ã€ã€‚]/g, ' ').replace(/ï¼Ÿ/g, '?').replace(/ï¼/g, '!');
+ 540:     const chars = [...normalized];
+ 541:     const romanParts = [];
+ 542:     const errors = [];
+ 543:     const romanMap = [];
+ 544:     let pendingSmallTsu = false;
+ 545:     for (let i = 0; i < chars.length; i++) {
+ 546:       const original = chars[i];
+ 547:       const hira = toHiragana(original);
+ 548:       if (/^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffã€…ã€†ã€‡]$/u.test(original)) {
+ 549:         errors.push({ index: i, char: original, type: 'kanji' });
+ 550:         continue;
+ 551:       }
+ 552:       if (hira === 'ã£') { pendingSmallTsu = true; continue; }
+ 553:       if (hira === 'ãƒ¼') {
+ 554:         const soFar = romanParts.join('');
+ 555:         const vowel = soFar.match(/[aeiou](?=[^aeiou]*$)/i)?.[0];
+ 556:         if (vowel) { romanParts.push(vowel); romanMap.push(i); }
+ 557:         else errors.push({ index: i, char: original, type: 'unsupported' });
+ 558:         continue;
+ 559:       }
+ 560:       const pair = i + 1 < chars.length ? hira + toHiragana(chars[i + 1]) : '';
+ 561:       let syllable = KANA[pair];
+ 562:       let consumed = 1;
+ 563:       if (syllable) consumed = 2;
+ 564:       else syllable = KANA[hira];
+ 565:       if (syllable) {
+ 566:         if (pendingSmallTsu) {
+ 567:           const doubled = syllable.startsWith('ch') ? 't' : (syllable.match(/^[bcdfghjklmnpqrstvwxyz]/)?.[0] || '');
+ 568:           if (doubled) { romanParts.push(doubled); romanMap.push(i); }
+ 569:           pendingSmallTsu = false;
+ 570:         }
+ 571:         romanParts.push(syllable);
+ 572:         for (let j = 0; j < syllable.length; j++) romanMap.push(i);
+ 573:         if (consumed === 2) i++;
+ 574:         continue;
+ 575:       }
+ 576:       if (/^[A-Za-z0-9.,?!/()&:;=+_"'@\-]$/.test(original)) {
+ 577:         const part = original.toUpperCase(); romanParts.push(part); romanMap.push(i); pendingSmallTsu = false; continue;
+ 578:       }
+ 579:       if (/\s/u.test(original)) { romanParts.push(' '); romanMap.push(i); pendingSmallTsu = false; continue; }
+ 580:       errors.push({ index: i, char: original, type: 'unsupported' });
+ 581:       pendingSmallTsu = false;
+ 582:     }
+ 583:     const rawRoman = romanParts.join('');
+ 584:     const roman = rawRoman.replace(/\s+/g, ' ').trim();
+ 585:     const trimmedStart = rawRoman.search(/\S|$/);
+ 586:     const map = romanMap.slice(Math.max(0, trimmedStart), Math.max(0, trimmedStart) + roman.length);
+ 587:     const morseTokens = [];
+ 588:     for (let i = 0; i < roman.length; i++) {
+ 589:       const char = roman[i];
+ 590:       if (char === ' ') { if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
+ 591:       const morseChar = char.toUpperCase();
+ 592:       const code = ALL_MORSE[morseChar];
+ 593:       if (code) morseTokens.push({ char: morseChar, code, sourceIndex: map[i] });
+ 594:       else errors.push({ index: map[i] ?? -1, char, type: 'unsupported' });
+ 595:     }
+ 596:     return { normalized, roman, morseTokens, errors };
+ 597:   }
+ 598:   // Kuromoji ã®èªžå¢ƒç•Œã¨èª­ã¿ã‚’ã€æ—¢å­˜ã®ã‹ãªâ†’ãƒ˜ãƒœãƒ³å¼å¤‰æ›ã¸æ©‹æ¸¡ã—ã™ã‚‹ç´”ç²‹é–¢æ•°ã€‚
+ 599:   function convertTokenizedText(input, tokens) {
+ 600:     const normalized = input.normalize('NFKC').replace(/[ã€ã€‚]/g, ' ').replace(/ï¼Ÿ/g, '?').replace(/ï¼/g, '!');
+ 601:     const pieces = [];
+ 602:     const errors = [];
+ 603:     const sourceIndexes = [];
+ 604:     for (const token of tokens) {
+ 605:       const surface = token.surface_form || '';
+ 606:       const start = Math.max(0, Number(token.word_position || 1) - 1);
+ 607:       let reading = token.reading;
+ 608:       if (token.pos === 'åŠ©è©ž' && surface === 'ã¯') reading = 'ãƒ¯';
+ 609:       else if (token.pos === 'åŠ©è©ž' && surface === 'ã¸') reading = 'ã‚¨';
+ 610:       else if (token.pos === 'åŠ©è©ž' && surface === 'ã‚’') reading = 'ã‚ª';
+ 611:       else if (surface === 'è‰¯ã„') reading = 'ã‚¤ã‚¤';
+ 612: 
+ 613:       if (KANJI_PATTERN.test(surface) && !reading) {
+ 614:         [...surface].forEach((char, offset) => errors.push({ index: start + offset, char, type: 'unsupported' }));
+ 615:         continue;
+ 616:       }
+ 617:       const converted = convertText(reading || surface);
+ 618:       converted.errors.forEach(error => errors.push({
+ 619:         ...error,
+ 620:         index: start + Math.min(Math.max(error.index, 0), Math.max(surface.length - 1, 0))
+ 621:       }));
+ 622:       if (!converted.roman) continue;
+ 623:       pieces.push(converted.roman);
+ 624:       for (let i = 0; i < converted.roman.length; i++) sourceIndexes.push(start);
+ 625:       sourceIndexes.push(start);
+ 626:     }
+ 627:     const roman = pieces.join(' ');
+ 628:     const morseTokens = [];
+ 629:     for (let i = 0; i < roman.length; i++) {
+ 630:       const char = roman[i].toUpperCase();
+ 631:       if (char === ' ') {
+ 632:         if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+ 633:         continue;
+ 634:       }
+ 635:       const code = ALL_MORSE[char];
+ 636:       if (code) morseTokens.push({ char, code, sourceIndex: sourceIndexes[i] ?? 0 });
+ 637:     }
+ 638:     return { normalized, roman, morseTokens, errors };
+ 639:   }
+ 640:   function loadTokenizer() {
+ 641:     if (tokenizer) return Promise.resolve(tokenizer);
+ 642:     if (tokenizerPromise) return tokenizerPromise;
+ 643:     tokenizerPromise = new Promise((resolve, reject) => {
+ 644:       const build = () => {
+ 645:         try {
+ 646:           window.kuromoji.builder({ dicPath: KUROMOJI_DIC }).build((error, builtTokenizer) => {
+ 647:             if (error || !builtTokenizer) { reject(error || new Error('Kuromoji ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ')); return; }
+ 648:             tokenizer = builtTokenizer;
+ 649:             resolve(tokenizer);
+ 650:           });
+ 651:         } catch (error) { reject(error); }
+ 652:       };
+ 653:       if (window.kuromoji) { build(); return; }
+ 654:       const script = document.createElement('script');
+ 655:       script.src = KUROMOJI_SCRIPT;
+ 656:       script.async = true;
+ 657:       script.addEventListener('load', build, { once: true });
+ 658:       script.addEventListener('error', () => reject(new Error('Kuromoji ã‚’èª­ã¿è¾¼ã‚ã¾ã›ã‚“ã§ã—ãŸ')), { once: true });
+ 659:       document.body.append(script);
+ 660:     }).catch(error => {
+ 661:       tokenizerFailed = true;
+ 662:       throw error;
+ 663:     });
+ 664:     return tokenizerPromise;
+ 665:   }
+ 666:   function runKanjiSelfTests(activeTokenizer) {
+ 667:     if (kanjiTestsRun) return;
+ 668:     kanjiTestsRun = true;
+ 669:     console.assert(convertTokenizedText('æ±äº¬', activeTokenizer.tokenize('æ±äº¬')).roman.toUpperCase() === 'TOUKYOU', 'æ±äº¬ â†’ TOUKYOU');
+ 670:     console.assert(convertTokenizedText('ä»Šæ—¥ã¯è‰¯ã„å¤©æ°—', activeTokenizer.tokenize('ä»Šæ—¥ã¯è‰¯ã„å¤©æ°—')).roman.toUpperCase() === 'KYOU WA II TENKI', 'ä»Šæ—¥ã¯è‰¯ã„å¤©æ°— â†’ KYOU WA II TENKI');
+ 671:   }
+ 672:   function morseString(result, ascii = false) {
+ 673:     return result.morseTokens.map(token => token.char === ' ' ? '/' : (ascii ? token.code : displayCode(token.code))).join(' ');
+ 674:   }
+ 675:   function clearConvertHighlights() {
+ 676:     document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+ 677:     const play = document.querySelector('#play-convert');
+ 678:     const stop = document.querySelector('#stop-convert');
+ 679:     if (play) play.disabled = false;
+ 680:     if (stop) stop.disabled = true;
+ 681:   }
+ 682:   function renderConversion(result = null, statusOverride = '') {
+ 683:     clearTimersAndLights();
+ 684:     conversion = result || convertText(document.querySelector('#convert-input').value);
+ 685:     const errorIndexes = new Set(conversion.errors.map(error => error.index));
+ 686:     const preview = document.querySelector('#convert-preview');
+ 687:     preview.replaceChildren(...[...conversion.normalized].map((char, index) => {
+ 688:       const span = document.createElement('span');
+ 689:       span.textContent = char;
+ 690:       span.dataset.sourceIndex = index;
+ 691:       if (errorIndexes.has(index)) span.classList.add('convert-error');
+ 692:       return span;
+ 693:     }));
+ 694:     document.querySelector('#convert-roman').textContent = conversion.roman || 'â€”';
+ 695:     const output = document.querySelector('#convert-output');
+ 696:     output.replaceChildren(...conversion.morseTokens.flatMap((token, index) => {
+ 697:       const span = document.createElement('span');
+ 698:       span.textContent = token.char === ' ' ? '/' : displayCode(token.code);
+ 699:       span.dataset.tokenIndex = index;
+ 700:       return [span, document.createTextNode(index === conversion.morseTokens.length - 1 ? '' : ' ')];
+ 701:     }));
+ 702:     const kanji = conversion.errors.some(error => error.type === 'kanji');
+ 703:     const unsupported = conversion.errors.some(error => error.type === 'unsupported');
+ 704:     const status = document.querySelector('#convert-status');
+ 705:     status.textContent = statusOverride || (kanji ? 'æ¼¢å­—ã¯ã²ã‚‰ãŒãªã§å…¥åŠ›ã—ã¦ãã ã•ã„' : unsupported ? 'èµ¤ã„æ–‡å­—ã¯æœªå¯¾å¿œã®ãŸã‚ã‚¹ã‚­ãƒƒãƒ—ã—ã¾ã—ãŸ' : '');
+ 706:     status.className = `status ${statusOverride ? '' : kanji || unsupported ? 'bad' : ''}`;
+ 707:   }
+ 708:   async function updateConversion(request) {
+ 709:     const input = document.querySelector('#convert-input').value;
+ 710:     if (!KANJI_PATTERN.test(input)) { renderConversion(convertText(input)); return; }
+ 711:     if (tokenizerFailed) { renderConversion(convertText(input)); return; }
+ 712:     renderConversion(convertText(input), 'æ¼¢å­—ã®èª­ã¿ã‚’æº–å‚™ä¸­â€¦ï¼ˆåˆå›žã®ã¿ç´„6MBï¼‰');
+ 713:     try {
+ 714:       const activeTokenizer = await loadTokenizer();
+ 715:       if (request !== conversionRequest || input !== document.querySelector('#convert-input').value) return;
+ 716:       runKanjiSelfTests(activeTokenizer);
+ 717:       const normalized = input.normalize('NFKC').replace(/[ã€ã€‚]/g, ' ').replace(/ï¼Ÿ/g, '?').replace(/ï¼/g, '!');
+ 718:       renderConversion(convertTokenizedText(input, activeTokenizer.tokenize(normalized)));
+ 719:     } catch (error) {
+ 720:       console.warn('æ¼¢å­—ã®èª­ã¿è¾¼ã¿:', error.message);
+ 721:       if (request === conversionRequest) renderConversion(convertText(input));
+ 722:     }
+ 723:   }
+ 724:   function scheduleConversion() {
+ 725:     const request = ++conversionRequest;
+ 726:     clearTimeout(convertDebounceTimer);
+ 727:     convertDebounceTimer = setTimeout(() => updateConversion(request), 200);
+ 728:   }
+ 729:   function highlightConversion(tokenIndex) {
+ 730:     document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+ 731:     const token = conversion?.morseTokens[tokenIndex];
+ 732:     if (!token) return;
+ 733:     document.querySelector(`#convert-preview [data-source-index="${token.sourceIndex}"]`)?.classList.add('convert-active');
+ 734:     document.querySelector(`#convert-output [data-token-index="${tokenIndex}"]`)?.classList.add('convert-active');
+ 735:   }
+ 736:   function playConversion() {
+ 737:     clearTimersAndLights();
+ 738:     if (!conversion?.morseTokens.some(token => token.char !== ' ')) return;
+ 739:     document.querySelector('#play-convert').disabled = true;
+ 740:     document.querySelector('#stop-convert').disabled = false;
+ 741:     document.querySelector('#convert-status').textContent = 'å†ç”Ÿä¸­';
+ 742:     document.querySelector('#convert-status').className = 'status';
+ 743:     const epoch = audioEpoch;
+ 744:     const unit = unitMs();
+ 745:     let cursor = 0;
+ 746:     beginSignalPlayback(epoch);
+ 747:     conversion.morseTokens.forEach((token, tokenIndex) => {
+ 748:       if (token.char === ' ') { cursor += unit * 7; return; }
+ 749:       later(() => {
+ 750:         document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+ 751:         highlightConversion(tokenIndex);
+ 752:       }, cursor);
+ 753:       [...token.code].forEach((mark, markIndex) => {
+ 754:         const duration = mark === '.' ? unit : unit * 3;
+ 755:         const stepLetter = /^[A-Z]$/.test(token.char) ? reverse[token.code.slice(0, markIndex + 1)] : null;
+ 756:         if (stepLetter) later(() => node(stepLetter)?.classList.add('active'), cursor);
+ 757:         tone(cursor, duration, epoch);
+ 758:         scheduleSignal(cursor, duration, epoch);
+ 759:         cursor += duration;
+ 760:         if (stepLetter) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+ 761:         cursor += unit;
+ 762:       });
+ 763:       cursor += unit * 2;
+ 764:     });
+ 765:     later(() => {
+ 766:       clearConvertHighlights();
+ 767:       document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+ 768:       document.querySelector('#convert-status').textContent = 'å†ç”Ÿã—ã¾ã—ãŸ';
+ 769:       endSignalPlayback(epoch);
+ 770:     }, cursor);
+ 771:   }
+ 772:   async function copyConversion() {
+ 773:     const text = morseString(conversion, document.querySelector('#ascii-notation').checked);
+ 774:     if (!text) return;
+ 775:     try {
+ 776:       await navigator.clipboard.writeText(text);
+ 777:     } catch (_) {
+ 778:       const helper = document.createElement('textarea');
+ 779:       helper.value = text; helper.style.position = 'fixed'; helper.style.opacity = '0';
+ 780:       document.body.append(helper); helper.select(); document.execCommand('copy'); helper.remove();
+ 781:     }
+ 782:     document.querySelector('#convert-status').textContent = 'ã‚³ãƒ”ãƒ¼ã—ã¾ã—ãŸ';
+ 783:     document.querySelector('#convert-status').className = 'status good';
+ 784:   }
+ 785:   function unitMs() { return 1200 / Number(document.querySelector('#wpm').value); }
+ 786:   function randomLetter() { return String.fromCharCode(65 + Math.floor(Math.random() * 26)); }
+ 787:   function node(letter) { return document.querySelector(`#node-${letter}`); }
+ 788: 
+ 789:   function clearTimersAndLights() {
+ 790:     for (const id of timers) clearTimeout(id);
+ 791:     timers.clear();
+ 792:     audioEpoch++;
+ 793:     stopAllAudio();
+ 794:     endSignalPlayback();
+ 795:     document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+ 796:     clearConvertHighlights();
+ 797:   }
+ 798: 
+ 799:   function later(fn, delay) {
+ 800:     const id = setTimeout(() => { timers.delete(id); fn(); }, delay);
+ 801:     timers.add(id);
+ 802:     return id;
+ 803:   }
+ 804: 
+ 805:   function setLightStatus(message) {
+ 806:     document.querySelector('#light-status').textContent = message;
+ 807:   }
+ 808: 
+ 809:   function confirmScreenFlash() {
+ 810:     if (flashWarningAccepted) return true;
+ 811:     const accepted = window.confirm('å¼·ã„ç‚¹æ»…ãŒå‡ºã¾ã™ã€‚ç”»é¢ãƒ•ãƒ©ãƒƒã‚·ãƒ¥ã‚’ä½¿ç”¨ã—ã¾ã™ã‹ï¼Ÿ');
+ 812:     if (accepted) flashWarningAccepted = true;
+ 813:     return accepted;
+ 814:   }
+ 815: 
+ 816:   async function enableSignalLight() {
+ 817:     if (lightInitializing) return;
+ 818:     lightInitializing = true;
+ 819:     setLightStatus('ãƒ©ã‚¤ãƒˆã‚’ç¢ºèªä¸­â€¦');
+ 820:     let fallbackReason = 'ã“ã®ç«¯æœ«ã¯ãƒ©ã‚¤ãƒˆéžå¯¾å¿œã®ãŸã‚ç”»é¢ã§ç‚¹æ»…ã—ã¾ã™';
+ 821:     try {
+ 822:       if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+ 823:       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+ 824:       if (!document.querySelector('#signal-light').checked) {
+ 825:         stream.getTracks().forEach(item => item.stop());
+ 826:         return;
+ 827:       }
+ 828:       const track = stream.getVideoTracks()[0];
+ 829:       if (track?.getCapabilities?.().torch) {
+ 830:         lightStream = stream;
+ 831:         lightTrack = track;
+ 832:         lightMethod = 'torch';
+ 833:         setLightStatus('ãƒ©ã‚¤ãƒˆã§ç‚¹æ»…ã—ã¾ã™');
+ 834:         return;
+ 835:       }
+ 836:       stream.getTracks().forEach(item => item.stop());
+ 837:     } catch (error) {
+ 838:       if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+ 839:         fallbackReason = 'ã‚«ãƒ¡ãƒ©ã®è¨±å¯ãŒæ‹’å¦ã•ã‚ŒãŸãŸã‚ç”»é¢ã§ç‚¹æ»…ã—ã¾ã™';
+ 840:       }
+ 841:     } finally {
+ 842:       lightInitializing = false;
+ 843:     }
+ 844:     if (!document.querySelector('#signal-light').checked) return;
+ 845:     if (!confirmScreenFlash()) {
+ 846:       document.querySelector('#signal-light').checked = false;
+ 847:       lightMethod = 'off';
+ 848:       setLightStatus('ç”»é¢ãƒ•ãƒ©ãƒƒã‚·ãƒ¥ã‚’ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã—ã¾ã—ãŸ');
+ 849:       return;
+ 850:     }
+ 851:     lightMethod = 'screen';
+ 852:     setLightStatus(fallbackReason);
+ 853:   }
+ 854: 
+ 855:   async function setSignalLight(on, epoch = lightEpoch) {
+ 856:     if (epoch !== lightEpoch || !document.querySelector('#signal-light').checked) return;
+ 857:     if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 858:       try { await lightTrack.applyConstraints({ advanced: [{ torch: on }] }); } catch (_) {}
+ 859:     } else if (lightMethod === 'screen') {
+ 860:       document.querySelector('#screen-flash').classList.toggle('on', on);
+ 861:     }
+ 862:   }
+ 863: 
+ 864:   function scheduleSignal(startOffset, duration, epoch) {
+ 865:     if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+ 866:     later(() => setSignalLight(true, epoch), startOffset);
+ 867:     later(() => setSignalLight(false, epoch), startOffset + duration);
+ 868:   }
+ 869: 
+ 870:   async function acquireWakeLock(epoch) {
+ 871:     if (!('wakeLock' in navigator)) return;
+ 872:     try {
+ 873:       const lock = await navigator.wakeLock.request('screen');
+ 874:       if (epoch !== lightEpoch) { await lock.release(); return; }
+ 875:       wakeLock = lock;
+ 876:       lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+ 877:     } catch (_) {}
+ 878:   }
+ 879: 
+ 880:   function beginSignalPlayback(epoch) {
+ 881:     if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+ 882:     lightEpoch = epoch;
+ 883:     if (lightMethod === 'screen') document.querySelector('#screen-flash').classList.add('running');
+ 884:     acquireWakeLock(epoch);
+ 885:   }
+ 886: 
+ 887:   function endSignalPlayback(epoch = null) {
+ 888:     if (epoch !== null && epoch !== lightEpoch) return;
+ 889:     lightEpoch++;
+ 890:     if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 891:       lightTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+ 892:     }
+ 893:     document.querySelector('#screen-flash').classList.remove('on', 'running');
+ 894:     if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+ 895:   }
+ 896: 
+ 897:   function disableSignalLight(message = 'ã‚ªãƒ•') {
+ 898:     endSignalPlayback();
+ 899:     if (lightStream) lightStream.getTracks().forEach(track => track.stop());
+ 900:     lightStream = null;
+ 901:     lightTrack = null;
+ 902:     lightMethod = 'off';
+ 903:     setLightStatus(message);
+ 904:   }
+ 905: 
+ 906:   async function audio() {
+ 907:     if (!document.querySelector('#sound-on').checked) return null;
+ 908:     try {
+ 909:       if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+ 910:       if (audioContext.state === 'suspended') await audioContext.resume();
+ 911:       return audioContext;
+ 912:     } catch (_) { return null; }
+ 913:   }
+ 914: 
+ 915:   function stopSound(sound) {
+ 916:     if (!sound || !activeSounds.has(sound)) return;
+ 917:     const now = sound.ctx.currentTime;
+ 918:     try {
+ 919:       sound.gain.gain.cancelScheduledValues(now);
+ 920:       sound.gain.gain.setValueAtTime(Math.max(sound.gain.gain.value, 0.0001), now);
+ 921:       sound.gain.gain.exponentialRampToValueAtTime(0.0001, now + .018);
+ 922:       sound.osc.stop(now + .025);
+ 923:     } catch (_) {}
+ 924:     activeSounds.delete(sound);
+ 925:   }
+ 926: 
+ 927:   function stopAllAudio() {
+ 928:     for (const sound of [...activeSounds]) stopSound(sound);
+ 929:     heldSound = null;
+ 930:   }
+ 931: 
+ 932:   async function tone(startOffset, duration, epoch = audioEpoch) {
+ 933:     const ctx = await audio();
+ 934:     if (!ctx || epoch !== audioEpoch) return;
+ 935:     const start = ctx.currentTime + startOffset / 1000;
+ 936:     const end = start + duration / 1000;
+ 937:     const osc = ctx.createOscillator();
+ 938:     const gain = ctx.createGain();
+ 939:     osc.frequency.value = Number(document.querySelector('#frequency').value);
+ 940:     osc.type = 'sine';
+ 941:     gain.gain.setValueAtTime(0.0001, start);
+ 942:     gain.gain.exponentialRampToValueAtTime(0.055, start + Math.min(.012, duration / 5000));
+ 943:     gain.gain.setValueAtTime(0.055, Math.max(start + .013, end - .018));
+ 944:     gain.gain.exponentialRampToValueAtTime(0.0001, end);
+ 945:     osc.connect(gain).connect(ctx.destination);
+ 946:     const sound = { ctx, osc, gain };
+ 947:     activeSounds.add(sound);
+ 948:     osc.onended = () => activeSounds.delete(sound);
+ 949:     osc.start(start); osc.stop(end + .01);
+ 950:   }
+ 951: 
+ 952:   async function startHeldTone(epoch) {
+ 953:     const ctx = await audio();
+ 954:     if (!ctx || epoch !== audioEpoch || !keyDownAt || mode !== 'key') return;
+ 955:     const osc = ctx.createOscillator();
+ 956:     const gain = ctx.createGain();
+ 957:     const now = ctx.currentTime;
+ 958:     osc.frequency.value = Number(document.querySelector('#frequency').value);
+ 959:     osc.type = 'sine';
+ 960:     gain.gain.setValueAtTime(0.0001, now);
+ 961:     gain.gain.exponentialRampToValueAtTime(0.055, now + .012);
+ 962:     osc.connect(gain).connect(ctx.destination);
+ 963:     const sound = { ctx, osc, gain };
+ 964:     activeSounds.add(sound);
+ 965:     osc.onended = () => activeSounds.delete(sound);
+ 966:     osc.start(now);
+ 967:     heldSound = sound;
+ 968:   }
+ 969: 
+ 970:   function playPath(letter, showLight = true) {
+ 971:     clearTimersAndLights();
+ 972:     const epoch = audioEpoch;
+ 973:     const code = MORSE[letter];
+ 974:     const unit = unitMs();
+ 975:     let cursor = 0;
+ 976:     beginSignalPlayback(epoch);
+ 977:     [...code].forEach((mark, i) => {
+ 978:       const duration = mark === '.' ? unit : unit * 3;
+ 979:       const stepLetter = reverse[code.slice(0, i + 1)];
+ 980:       if (showLight) later(() => node(stepLetter)?.classList.add('active'), cursor);
+ 981:       tone(cursor, duration, epoch);
+ 982:       scheduleSignal(cursor, duration, epoch);
+ 983:       cursor += duration;
+ 984:       if (showLight) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+ 985:       cursor += unit;
+ 986:     });
+ 987:     if (showLight) later(() => node(letter)?.classList.add('active'), cursor);
+ 988:     later(() => endSignalPlayback(epoch), cursor);
+ 989:     return cursor;
+ 990:   }
+ 991: 
+ 992:   function onNodeChoose(letter) {
+ 993:     if (mode === 'explore') {
+ 994:       document.querySelector('#explore-letter').textContent = letter;
+ 995:       document.querySelector('#explore-code').textContent = displayCode(MORSE[letter]);
+ 996:       playPath(letter, true);
+ 997:     } else if (mode === 'quiz' && quizTarget) {
+ 998:       clearTimersAndLights();
+ 999:       const correct = letter === quizTarget;
+1000:       quizTotal++;
+1001:       if (correct) { quizCorrect++; streak++; progress[quizTarget].correct++; }
+1002:       else { streak = 0; progress[quizTarget].wrong++; flashError(letter); }
+1003:       saveProgress();
+1004:       document.querySelector('#quiz-status').textContent = correct ? `æ­£è§£ã€‚${quizTarget} ã¯ ${displayCode(MORSE[quizTarget])}` : `é•ã„ã¾ã™ã€‚æ­£è§£ã¯ ${quizTarget}ï¼ˆ${displayCode(MORSE[quizTarget])}ï¼‰`;
+1005:       document.querySelector('#quiz-status').className = `status ${correct ? 'good' : 'bad'}`;
+1006:       document.querySelector('#quiz-mark').textContent = displayCode(MORSE[quizTarget]);
+1007:       document.querySelector('#accuracy').textContent = `${Math.round(quizCorrect / quizTotal * 100)}%`;
+1008:       document.querySelector('#streak').textContent = streak;
+1009:       node(quizTarget)?.classList.add('active');
+1010:       quizTarget = null;
+1011:       document.querySelector('#play-quiz').textContent = 'æ¬¡ã®å•é¡Œ';
+1012:     }
+1013:   }
+1014: 
+1015:   function flashError(letter) {
+1016:     const el = node(letter);
+1017:     if (!el) return;
+1018:     el.classList.add('error');
+1019:     later(() => el.classList.remove('error'), 430);
+1020:   }
+1021: 
+1022:   function saveProgress() {
+1023:     try { localStorage.setItem('morse-tag-progress', JSON.stringify(progress)); } catch (_) {}
+1024:   }
+1025: 
+1026:   function chooseWeightedQuestion() {
+1027:     const bag = [];
+1028:     for (const letter of Object.keys(MORSE)) {
+1029:       const score = progress[letter];
+1030:       const weight = Math.max(1, 2 + score.wrong * 3 - score.correct);
+1031:       for (let i = 0; i < Math.min(weight, 12); i++) bag.push(letter);
+1032:     }
+1033:     return bag[Math.floor(Math.random() * bag.length)];
+1034:   }
+1035: 
+1036:   function beginKey() {
+1037:     if (keyDownAt || keyFinalizing) return;
+1038:     keyDownAt = performance.now();
+1039:     document.querySelector('#telegraph-key').classList.add('is-down');
+1040:     document.querySelector('#telegraph-key').setAttribute('aria-pressed', 'true');
+1041:     if (keyFinalizeTimer) clearTimeout(keyFinalizeTimer);
+1042:     keyFinalizeTimer = 0;
+1043:     startHeldTone(audioEpoch);
+1044:   }
+1045: 
+1046:   function endKey() {
+1047:     if (!keyDownAt) return;
+1048:     const held = performance.now() - keyDownAt;
+1049:     keyDownAt = 0;
+1050:     const unit = unitMs();
+1051:     const mark = held >= Math.max(unit * 2, 150) ? '-' : '.';
+1052:     document.querySelector('#telegraph-key').classList.remove('is-down');
+1053:     document.querySelector('#telegraph-key').setAttribute('aria-pressed', 'false');
+1054:     stopSound(heldSound);
+1055:     heldSound = null;
+1056:     keySequence += mark;
+1057:     document.querySelector('#key-code').textContent = displayCode(keySequence);
+1058:     clearTimersAndLights();
+1059:     const current = reverse[keySequence];
+1060:     const isPrefix = Object.values(MORSE).some(code => code.startsWith(keySequence));
+1061:     if (!isPrefix) {
+1062:       document.querySelector('#key-status').textContent = 'ãã®çµŒè·¯ã¯ã‚ã‚Šã¾ã›ã‚“ã€‚ã‚‚ã†ä¸€åº¦ã©ã†ãžã€‚';
+1063:       document.querySelector('#key-status').className = 'status bad';
+1064:       for (const el of document.querySelectorAll('.morse-node')) el.classList.add('error');
+1065:       later(resetKeySequence, 500);
+1066:       return;
+1067:     }
+1068:     if (current) node(current)?.classList.add('active');
+1069:     keyFinalizeTimer = setTimeout(finalizeKey, Math.max(unit * 5, 700));
+1070:   }
+1071: 
+1072:   function cancelKeyPress() {
+1073:     keyDownAt = 0;
+1074:     document.querySelector('#telegraph-key').classList.remove('is-down');
+1075:     document.querySelector('#telegraph-key').setAttribute('aria-pressed', 'false');
+1076:     stopSound(heldSound);
+1077:     heldSound = null;
+1078:   }
+1079: 
+1080:   function resetKeySequence() {
+1081:     keySequence = '';
+1082:     document.querySelector('#key-code').textContent = 'â€”';
+1083:     document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+1084:   }
+1085: 
+1086:   function finalizeKey() {
+1087:     const sequence = keySequence;
+1088:     keySequence = '';
+1089:     keyFinalizeTimer = 0;
+1090:     keyFinalizing = true;
+1091:     const answer = reverse[sequence];
+1092:     const correct = answer === keyPrompt;
+1093:     if (answer) {
+1094:       progress[keyPrompt][correct ? 'correct' : 'wrong']++;
+1095:       saveProgress();
+1096:       document.querySelector('#key-status').textContent = correct ? `æ­£è§£ã€‚${answer} ã§ã™ã€‚` : `${answer} ã§ã—ãŸã€‚ãŠé¡Œã¯ ${keyPrompt} ã§ã™ã€‚`;
+1097:       document.querySelector('#key-status').className = `status ${correct ? 'good' : 'bad'}`;
+1098:       if (!correct) flashError(answer);
+1099:     }
+1100:     keyNextTimer = setTimeout(() => {
+1101:       keyNextTimer = 0;
+1102:       keyFinalizing = false;
+1103:       keyPrompt = randomLetter();
+1104:       document.querySelector('#key-prompt').textContent = keyPrompt;
+1105:       resetKeySequence();
+1106:     }, 900);
+1107:   }
+1108: 
+1109:   function switchMode(next) {
+1110:     mode = next;
+1111:     clearTimersAndLights();
+1112:     if (keyFinalizeTimer) clearTimeout(keyFinalizeTimer);
+1113:     if (keyNextTimer) clearTimeout(keyNextTimer);
+1114:     keyFinalizeTimer = 0;
+1115:     keyNextTimer = 0;
+1116:     keyFinalizing = false;
+1117:     keySequence = '';
+1118:     cancelKeyPress();
+1119:     resetKeySequence();
+1120:     document.querySelectorAll('.tab').forEach(tab => {
+1121:       const selected = tab.dataset.mode === next;
+1122:       tab.setAttribute('aria-selected', String(selected));
+1123:       tab.tabIndex = selected ? 0 : -1;
+1124:     });
+1125:     document.querySelectorAll('.panel').forEach(panel => panel.hidden = panel.id !== `panel-${next}`);
+1126:     if (next === 'explore') node(document.querySelector('#explore-letter').textContent)?.classList.add('active');
+1127:     if (next === 'key') document.querySelector('#telegraph-key').focus();
+1128:   }
+1129: 
+1130:   buildPlate();
+1131:   const safeValidate = () => { try { validateModel(); } catch (error) { console.warn('é…ç½®ãƒã‚§ãƒƒã‚¯:', error.message); } };
+1132:   safeValidate();
+1133:   document.fonts?.ready.then(safeValidate);
+1134:   document.querySelector('#key-prompt').textContent = keyPrompt;
+1135:   node('E').classList.add('active');
+1136: 
+1137:   nodesLayer.addEventListener('click', event => {
+1138:     const target = event.target.closest('.morse-node');
+1139:     if (target) onNodeChoose(target.dataset.letter);
+1140:   });
+1141:   nodesLayer.addEventListener('keydown', event => {
+1142:     const target = event.target.closest('.morse-node');
+1143:     if (target && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onNodeChoose(target.dataset.letter); }
+1144:   });
+1145:   document.querySelector('.tabs').addEventListener('click', event => {
+1146:     const tab = event.target.closest('.tab');
+1147:     if (tab) switchMode(tab.dataset.mode);
+1148:   });
+1149:   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('keydown', event => {
+1150:     if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+1151:     const tabs = [...document.querySelectorAll('.tab')];
+1152:     const delta = event.key === 'ArrowRight' ? 1 : -1;
+1153:     const next = tabs[(tabs.indexOf(tab) + delta + tabs.length) % tabs.length];
+1154:     switchMode(next.dataset.mode); next.focus();
+1155:   }));
+1156: 
+1157:   const keyButton = document.querySelector('#telegraph-key');
+1158:   keyButton.addEventListener('pointerdown', event => { event.preventDefault(); keyButton.setPointerCapture(event.pointerId); beginKey(); });
+1159:   keyButton.addEventListener('pointerup', endKey);
+1160:   keyButton.addEventListener('pointercancel', cancelKeyPress);
+1161:   window.addEventListener('keydown', event => {
+1162:     if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) {
+1163:       event.preventDefault();
+1164:       if (!event.repeat) beginKey();
+1165:     }
+1166:   });
+1167:   window.addEventListener('keyup', event => {
+1168:     if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) { event.preventDefault(); endKey(); }
+1169:   });
+1170: 
+1171:   document.querySelector('#play-quiz').addEventListener('click', () => {
+1172:     if (!quizTarget) quizTarget = chooseWeightedQuestion();
+1173:     document.querySelector('#quiz-mark').textContent = 'ï¼Ÿï¼Ÿ';
+1174:     document.querySelector('#quiz-status').textContent = 'å†ç”Ÿä¸­ã€‚æ–‡å­—ã‚’é¸ã‚“ã§ãã ã•ã„ã€‚';
+1175:     document.querySelector('#quiz-status').className = 'status';
+1176:     document.querySelector('#play-quiz').textContent = 'ã‚‚ã†ä¸€åº¦èžã';
+1177:     playPath(quizTarget, document.querySelector('#quiz-light').checked);
+1178:   });
+1179:   document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
+1180:   document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+1181:   document.querySelector('#signal-light').addEventListener('change', async event => {
+1182:     if (event.target.checked) await enableSignalLight();
+1183:     else disableSignalLight();
+1184:   });
+1185:   document.querySelector('#screen-flash').addEventListener('pointerdown', () => {
+1186:     clearTimersAndLights();
+1187:     if (mode === 'convert') document.querySelector('#convert-status').textContent = 'åœæ­¢ã—ã¾ã—ãŸ';
+1188:   });
+1189:   document.addEventListener('visibilitychange', () => {
+1190:     if (!document.hidden) return;
+1191:     clearTimersAndLights();
+1192:     if (document.querySelector('#signal-light').checked) {
+1193:       document.querySelector('#signal-light').checked = false;
+1194:       disableSignalLight('ãƒšãƒ¼ã‚¸ãŒéžè¡¨ç¤ºã«ãªã£ãŸãŸã‚åœæ­¢ã—ã¾ã—ãŸ');
+1195:     }
+1196:   });
+1197: 
+1198:   document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
+1199:   document.querySelector('#play-convert').addEventListener('click', playConversion);
+1200:   document.querySelector('#stop-convert').addEventListener('click', () => {
+1201:     clearTimersAndLights();
+1202:     document.querySelector('#convert-status').textContent = 'åœæ­¢ã—ã¾ã—ãŸ';
+1203:   });
+1204:   document.querySelector('#copy-convert').addEventListener('click', copyConversion);
+1205:   renderConversion();
+1206:   // èª­ã¿è¾¼ã¿å‰ã¯ã‹ãªä¾‹æ–‡ã‚’æç”»ã—ã€ãã®å¾Œã«æ–°ã—ã„æ¼¢å­—å…¥ã‚ŠåˆæœŸä¾‹æ–‡ã‚’å¤‰æ›ã™ã‚‹ã€‚
+1207:   setTimeout(() => {
+1208:     const input = document.querySelector('#convert-input');
+1209:     input.value = 'ä»Šæ—¥ã¯è‰¯ã„å¤©æ°—';
+1210:     scheduleConversion();
+1211:   }, 0);
+1212:   if (mode === 'explore') node('E').classList.add('active');
+1213: 
+1214:   // è¿½åŠ ä»•æ§˜ã«è¨˜è¼‰ã•ã‚ŒãŸå¤‰æ›ã®è‡ªå·±ãƒ†ã‚¹ãƒˆã€‚
+1215:   console.assert(convertText('ã“ã‚“ã«ã¡ã¯').roman.toUpperCase() === 'KONNICHIHA', 'ã“ã‚“ã«ã¡ã¯ â†’ KONNICHIHA');
+1216:   console.assert(convertText('ã‚­ãƒ£ãƒƒãƒ').roman.toUpperCase() === 'KYATCHI', 'ã‚­ãƒ£ãƒƒãƒ â†’ KYATCHI');
+1217:   console.assert(convertText('ãƒ©ãƒ¼ãƒ¡ãƒ³').roman.toUpperCase() === 'RAAMEN', 'ãƒ©ãƒ¼ãƒ¡ãƒ³ â†’ RAAMEN');
+1218:   console.assert(morseString(convertText('SOS'), true) === '... --- ...', 'SOS â†’ ... --- ...');
+1219:   console.assert(convertText('æ±äº¬').errors.every(error => error.type === 'kanji') && convertText('æ±äº¬').errors.length === 2, 'æ±äº¬ â†’ æ¼¢å­—ã‚¨ãƒ©ãƒ¼');
+1220: })();
+1221: </script>
+1222: 
+1223: </body>
+1224: </html>
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$lines=Get-Content -LiteralPath .'"\\index.html; foreach("'$range in @(@(590,790),@(790,915))){ for($i=$range[0];$i -le $range[1];$i++){ '"'{0,4}: {1}' -f "'$i,$lines[$i-1] } }' in C:\dev\morse-tag
+ succeeded in 965ms:
+ 590:       if (char === ' ') { if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
+ 591:       const morseChar = char.toUpperCase();
+ 592:       const code = ALL_MORSE[morseChar];
+ 593:       if (code) morseTokens.push({ char: morseChar, code, sourceIndex: map[i] });
+ 594:       else errors.push({ index: map[i] ?? -1, char, type: 'unsupported' });
+ 595:     }
+ 596:     return { normalized, roman, morseTokens, errors };
+ 597:   }
+ 598:   // Kuromoji ã®èªžå¢ƒç•Œã¨èª­ã¿ã‚’ã€æ—¢å­˜ã®ã‹ãªâ†’ãƒ˜ãƒœãƒ³å¼å¤‰æ›ã¸æ©‹æ¸¡ã—ã™ã‚‹ç´”ç²‹é–¢æ•°ã€‚
+ 599:   function convertTokenizedText(input, tokens) {
+ 600:     const normalized = input.normalize('NFKC').replace(/[ã€ã€‚]/g, ' ').replace(/ï¼Ÿ/g, '?').replace(/ï¼/g, '!');
+ 601:     const pieces = [];
+ 602:     const errors = [];
+ 603:     const sourceIndexes = [];
+ 604:     for (const token of tokens) {
+ 605:       const surface = token.surface_form || '';
+ 606:       const start = Math.max(0, Number(token.word_position || 1) - 1);
+ 607:       let reading = token.reading;
+ 608:       if (token.pos === 'åŠ©è©ž' && surface === 'ã¯') reading = 'ãƒ¯';
+ 609:       else if (token.pos === 'åŠ©è©ž' && surface === 'ã¸') reading = 'ã‚¨';
+ 610:       else if (token.pos === 'åŠ©è©ž' && surface === 'ã‚’') reading = 'ã‚ª';
+ 611:       else if (surface === 'è‰¯ã„') reading = 'ã‚¤ã‚¤';
+ 612: 
+ 613:       if (KANJI_PATTERN.test(surface) && !reading) {
+ 614:         [...surface].forEach((char, offset) => errors.push({ index: start + offset, char, type: 'unsupported' }));
+ 615:         continue;
+ 616:       }
+ 617:       const converted = convertText(reading || surface);
+ 618:       converted.errors.forEach(error => errors.push({
+ 619:         ...error,
+ 620:         index: start + Math.min(Math.max(error.index, 0), Math.max(surface.length - 1, 0))
+ 621:       }));
+ 622:       if (!converted.roman) continue;
+ 623:       pieces.push(converted.roman);
+ 624:       for (let i = 0; i < converted.roman.length; i++) sourceIndexes.push(start);
+ 625:       sourceIndexes.push(start);
+ 626:     }
+ 627:     const roman = pieces.join(' ');
+ 628:     const morseTokens = [];
+ 629:     for (let i = 0; i < roman.length; i++) {
+ 630:       const char = roman[i].toUpperCase();
+ 631:       if (char === ' ') {
+ 632:         if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+ 633:         continue;
+ 634:       }
+ 635:       const code = ALL_MORSE[char];
+ 636:       if (code) morseTokens.push({ char, code, sourceIndex: sourceIndexes[i] ?? 0 });
+ 637:     }
+ 638:     return { normalized, roman, morseTokens, errors };
+ 639:   }
+ 640:   function loadTokenizer() {
+ 641:     if (tokenizer) return Promise.resolve(tokenizer);
+ 642:     if (tokenizerPromise) return tokenizerPromise;
+ 643:     tokenizerPromise = new Promise((resolve, reject) => {
+ 644:       const build = () => {
+ 645:         try {
+ 646:           window.kuromoji.builder({ dicPath: KUROMOJI_DIC }).build((error, builtTokenizer) => {
+ 647:             if (error || !builtTokenizer) { reject(error || new Error('Kuromoji ã®åˆæœŸåŒ–ã«å¤±æ•—ã—ã¾ã—ãŸ')); return; }
+ 648:             tokenizer = builtTokenizer;
+ 649:             resolve(tokenizer);
+ 650:           });
+ 651:         } catch (error) { reject(error); }
+ 652:       };
+ 653:       if (window.kuromoji) { build(); return; }
+ 654:       const script = document.createElement('script');
+ 655:       script.src = KUROMOJI_SCRIPT;
+ 656:       script.async = true;
+ 657:       script.addEventListener('load', build, { once: true });
+ 658:       script.addEventListener('error', () => reject(new Error('Kuromoji ã‚’èª­ã¿è¾¼ã‚ã¾ã›ã‚“ã§ã—ãŸ')), { once: true });
+ 659:       document.body.append(script);
+ 660:     }).catch(error => {
+ 661:       tokenizerFailed = true;
+ 662:       throw error;
+ 663:     });
+ 664:     return tokenizerPromise;
+ 665:   }
+ 666:   function runKanjiSelfTests(activeTokenizer) {
+ 667:     if (kanjiTestsRun) return;
+ 668:     kanjiTestsRun = true;
+ 669:     console.assert(convertTokenizedText('æ±äº¬', activeTokenizer.tokenize('æ±äº¬')).roman.toUpperCase() === 'TOUKYOU', 'æ±äº¬ â†’ TOUKYOU');
+ 670:     console.assert(convertTokenizedText('ä»Šæ—¥ã¯è‰¯ã„å¤©æ°—', activeTokenizer.tokenize('ä»Šæ—¥ã¯è‰¯ã„å¤©æ°—')).roman.toUpperCase() === 'KYOU WA II TENKI', 'ä»Šæ—¥ã¯è‰¯ã„å¤©æ°— â†’ KYOU WA II TENKI');
+ 671:   }
+ 672:   function morseString(result, ascii = false) {
+ 673:     return result.morseTokens.map(token => token.char === ' ' ? '/' : (ascii ? token.code : displayCode(token.code))).join(' ');
+ 674:   }
+ 675:   function clearConvertHighlights() {
+ 676:     document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+ 677:     const play = document.querySelector('#play-convert');
+ 678:     const stop = document.querySelector('#stop-convert');
+ 679:     if (play) play.disabled = false;
+ 680:     if (stop) stop.disabled = true;
+ 681:   }
+ 682:   function renderConversion(result = null, statusOverride = '') {
+ 683:     clearTimersAndLights();
+ 684:     conversion = result || convertText(document.querySelector('#convert-input').value);
+ 685:     const errorIndexes = new Set(conversion.errors.map(error => error.index));
+ 686:     const preview = document.querySelector('#convert-preview');
+ 687:     preview.replaceChildren(...[...conversion.normalized].map((char, index) => {
+ 688:       const span = document.createElement('span');
+ 689:       span.textContent = char;
+ 690:       span.dataset.sourceIndex = index;
+ 691:       if (errorIndexes.has(index)) span.classList.add('convert-error');
+ 692:       return span;
+ 693:     }));
+ 694:     document.querySelector('#convert-roman').textContent = conversion.roman || 'â€”';
+ 695:     const output = document.querySelector('#convert-output');
+ 696:     output.replaceChildren(...conversion.morseTokens.flatMap((token, index) => {
+ 697:       const span = document.createElement('span');
+ 698:       span.textContent = token.char === ' ' ? '/' : displayCode(token.code);
+ 699:       span.dataset.tokenIndex = index;
+ 700:       return [span, document.createTextNode(index === conversion.morseTokens.length - 1 ? '' : ' ')];
+ 701:     }));
+ 702:     const kanji = conversion.errors.some(error => error.type === 'kanji');
+ 703:     const unsupported = conversion.errors.some(error => error.type === 'unsupported');
+ 704:     const status = document.querySelector('#convert-status');
+ 705:     status.textContent = statusOverride || (kanji ? 'æ¼¢å­—ã¯ã²ã‚‰ãŒãªã§å…¥åŠ›ã—ã¦ãã ã•ã„' : unsupported ? 'èµ¤ã„æ–‡å­—ã¯æœªå¯¾å¿œã®ãŸã‚ã‚¹ã‚­ãƒƒãƒ—ã—ã¾ã—ãŸ' : '');
+ 706:     status.className = `status ${statusOverride ? '' : kanji || unsupported ? 'bad' : ''}`;
+ 707:   }
+ 708:   async function updateConversion(request) {
+ 709:     const input = document.querySelector('#convert-input').value;
+ 710:     if (!KANJI_PATTERN.test(input)) { renderConversion(convertText(input)); return; }
+ 711:     if (tokenizerFailed) { renderConversion(convertText(input)); return; }
+ 712:     renderConversion(convertText(input), 'æ¼¢å­—ã®èª­ã¿ã‚’æº–å‚™ä¸­â€¦ï¼ˆåˆå›žã®ã¿ç´„6MBï¼‰');
+ 713:     try {
+ 714:       const activeTokenizer = await loadTokenizer();
+ 715:       if (request !== conversionRequest || input !== document.querySelector('#convert-input').value) return;
+ 716:       runKanjiSelfTests(activeTokenizer);
+ 717:       const normalized = input.normalize('NFKC').replace(/[ã€ã€‚]/g, ' ').replace(/ï¼Ÿ/g, '?').replace(/ï¼/g, '!');
+ 718:       renderConversion(convertTokenizedText(input, activeTokenizer.tokenize(normalized)));
+ 719:     } catch (error) {
+ 720:       console.warn('æ¼¢å­—ã®èª­ã¿è¾¼ã¿:', error.message);
+ 721:       if (request === conversionRequest) renderConversion(convertText(input));
+ 722:     }
+ 723:   }
+ 724:   function scheduleConversion() {
+ 725:     const request = ++conversionRequest;
+ 726:     clearTimeout(convertDebounceTimer);
+ 727:     convertDebounceTimer = setTimeout(() => updateConversion(request), 200);
+ 728:   }
+ 729:   function highlightConversion(tokenIndex) {
+ 730:     document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+ 731:     const token = conversion?.morseTokens[tokenIndex];
+ 732:     if (!token) return;
+ 733:     document.querySelector(`#convert-preview [data-source-index="${token.sourceIndex}"]`)?.classList.add('convert-active');
+ 734:     document.querySelector(`#convert-output [data-token-index="${tokenIndex}"]`)?.classList.add('convert-active');
+ 735:   }
+ 736:   function playConversion() {
+ 737:     clearTimersAndLights();
+ 738:     if (!conversion?.morseTokens.some(token => token.char !== ' ')) return;
+ 739:     document.querySelector('#play-convert').disabled = true;
+ 740:     document.querySelector('#stop-convert').disabled = false;
+ 741:     document.querySelector('#convert-status').textContent = 'å†ç”Ÿä¸­';
+ 742:     document.querySelector('#convert-status').className = 'status';
+ 743:     const epoch = audioEpoch;
+ 744:     const unit = unitMs();
+ 745:     let cursor = 0;
+ 746:     beginSignalPlayback(epoch);
+ 747:     conversion.morseTokens.forEach((token, tokenIndex) => {
+ 748:       if (token.char === ' ') { cursor += unit * 7; return; }
+ 749:       later(() => {
+ 750:         document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+ 751:         highlightConversion(tokenIndex);
+ 752:       }, cursor);
+ 753:       [...token.code].forEach((mark, markIndex) => {
+ 754:         const duration = mark === '.' ? unit : unit * 3;
+ 755:         const stepLetter = /^[A-Z]$/.test(token.char) ? reverse[token.code.slice(0, markIndex + 1)] : null;
+ 756:         if (stepLetter) later(() => node(stepLetter)?.classList.add('active'), cursor);
+ 757:         tone(cursor, duration, epoch);
+ 758:         scheduleSignal(cursor, duration, epoch);
+ 759:         cursor += duration;
+ 760:         if (stepLetter) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+ 761:         cursor += unit;
+ 762:       });
+ 763:       cursor += unit * 2;
+ 764:     });
+ 765:     later(() => {
+ 766:       clearConvertHighlights();
+ 767:       document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+ 768:       document.querySelector('#convert-status').textContent = 'å†ç”Ÿã—ã¾ã—ãŸ';
+ 769:       endSignalPlayback(epoch);
+ 770:     }, cursor);
+ 771:   }
+ 772:   async function copyConversion() {
+ 773:     const text = morseString(conversion, document.querySelector('#ascii-notation').checked);
+ 774:     if (!text) return;
+ 775:     try {
+ 776:       await navigator.clipboard.writeText(text);
+ 777:     } catch (_) {
+ 778:       const helper = document.createElement('textarea');
+ 779:       helper.value = text; helper.style.position = 'fixed'; helper.style.opacity = '0';
+ 780:       document.body.append(helper); helper.select(); document.execCommand('copy'); helper.remove();
+ 781:     }
+ 782:     document.querySelector('#convert-status').textContent = 'ã‚³ãƒ”ãƒ¼ã—ã¾ã—ãŸ';
+ 783:     document.querySelector('#convert-status').className = 'status good';
+ 784:   }
+ 785:   function unitMs() { return 1200 / Number(document.querySelector('#wpm').value); }
+ 786:   function randomLetter() { return String.fromCharCode(65 + Math.floor(Math.random() * 26)); }
+ 787:   function node(letter) { return document.querySelector(`#node-${letter}`); }
+ 788: 
+ 789:   function clearTimersAndLights() {
+ 790:     for (const id of timers) clearTimeout(id);
+ 790:     for (const id of timers) clearTimeout(id);
+ 791:     timers.clear();
+ 792:     audioEpoch++;
+ 793:     stopAllAudio();
+ 794:     endSignalPlayback();
+ 795:     document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+ 796:     clearConvertHighlights();
+ 797:   }
+ 798: 
+ 799:   function later(fn, delay) {
+ 800:     const id = setTimeout(() => { timers.delete(id); fn(); }, delay);
+ 801:     timers.add(id);
+ 802:     return id;
+ 803:   }
+ 804: 
+ 805:   function setLightStatus(message) {
+ 806:     document.querySelector('#light-status').textContent = message;
+ 807:   }
+ 808: 
+ 809:   function confirmScreenFlash() {
+ 810:     if (flashWarningAccepted) return true;
+ 811:     const accepted = window.confirm('å¼·ã„ç‚¹æ»…ãŒå‡ºã¾ã™ã€‚ç”»é¢ãƒ•ãƒ©ãƒƒã‚·ãƒ¥ã‚’ä½¿ç”¨ã—ã¾ã™ã‹ï¼Ÿ');
+ 812:     if (accepted) flashWarningAccepted = true;
+ 813:     return accepted;
+ 814:   }
+ 815: 
+ 816:   async function enableSignalLight() {
+ 817:     if (lightInitializing) return;
+ 818:     lightInitializing = true;
+ 819:     setLightStatus('ãƒ©ã‚¤ãƒˆã‚’ç¢ºèªä¸­â€¦');
+ 820:     let fallbackReason = 'ã“ã®ç«¯æœ«ã¯ãƒ©ã‚¤ãƒˆéžå¯¾å¿œã®ãŸã‚ç”»é¢ã§ç‚¹æ»…ã—ã¾ã™';
+ 821:     try {
+ 822:       if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+ 823:       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+ 824:       if (!document.querySelector('#signal-light').checked) {
+ 825:         stream.getTracks().forEach(item => item.stop());
+ 826:         return;
+ 827:       }
+ 828:       const track = stream.getVideoTracks()[0];
+ 829:       if (track?.getCapabilities?.().torch) {
+ 830:         lightStream = stream;
+ 831:         lightTrack = track;
+ 832:         lightMethod = 'torch';
+ 833:         setLightStatus('ãƒ©ã‚¤ãƒˆã§ç‚¹æ»…ã—ã¾ã™');
+ 834:         return;
+ 835:       }
+ 836:       stream.getTracks().forEach(item => item.stop());
+ 837:     } catch (error) {
+ 838:       if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+ 839:         fallbackReason = 'ã‚«ãƒ¡ãƒ©ã®è¨±å¯ãŒæ‹’å¦ã•ã‚ŒãŸãŸã‚ç”»é¢ã§ç‚¹æ»…ã—ã¾ã™';
+ 840:       }
+ 841:     } finally {
+ 842:       lightInitializing = false;
+ 843:     }
+ 844:     if (!document.querySelector('#signal-light').checked) return;
+ 845:     if (!confirmScreenFlash()) {
+ 846:       document.querySelector('#signal-light').checked = false;
+ 847:       lightMethod = 'off';
+ 848:       setLightStatus('ç”»é¢ãƒ•ãƒ©ãƒƒã‚·ãƒ¥ã‚’ã‚­ãƒ£ãƒ³ã‚»ãƒ«ã—ã¾ã—ãŸ');
+ 849:       return;
+ 850:     }
+ 851:     lightMethod = 'screen';
+ 852:     setLightStatus(fallbackReason);
+ 853:   }
+ 854: 
+ 855:   async function setSignalLight(on, epoch = lightEpoch) {
+ 856:     if (epoch !== lightEpoch || !document.querySelector('#signal-light').checked) return;
+ 857:     if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 858:       try { await lightTrack.applyConstraints({ advanced: [{ torch: on }] }); } catch (_) {}
+ 859:     } else if (lightMethod === 'screen') {
+ 860:       document.querySelector('#screen-flash').classList.toggle('on', on);
+ 861:     }
+ 862:   }
+ 863: 
+ 864:   function scheduleSignal(startOffset, duration, epoch) {
+ 865:     if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+ 866:     later(() => setSignalLight(true, epoch), startOffset);
+ 867:     later(() => setSignalLight(false, epoch), startOffset + duration);
+ 868:   }
+ 869: 
+ 870:   async function acquireWakeLock(epoch) {
+ 871:     if (!('wakeLock' in navigator)) return;
+ 872:     try {
+ 873:       const lock = await navigator.wakeLock.request('screen');
+ 874:       if (epoch !== lightEpoch) { await lock.release(); return; }
+ 875:       wakeLock = lock;
+ 876:       lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+ 877:     } catch (_) {}
+ 878:   }
+ 879: 
+ 880:   function beginSignalPlayback(epoch) {
+ 881:     if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+ 882:     lightEpoch = epoch;
+ 883:     if (lightMethod === 'screen') document.querySelector('#screen-flash').classList.add('running');
+ 884:     acquireWakeLock(epoch);
+ 885:   }
+ 886: 
+ 887:   function endSignalPlayback(epoch = null) {
+ 888:     if (epoch !== null && epoch !== lightEpoch) return;
+ 889:     lightEpoch++;
+ 890:     if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 891:       lightTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+ 892:     }
+ 893:     document.querySelector('#screen-flash').classList.remove('on', 'running');
+ 894:     if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+ 895:   }
+ 896: 
+ 897:   function disableSignalLight(message = 'ã‚ªãƒ•') {
+ 898:     endSignalPlayback();
+ 899:     if (lightStream) lightStream.getTracks().forEach(track => track.stop());
+ 900:     lightStream = null;
+ 901:     lightTrack = null;
+ 902:     lightMethod = 'off';
+ 903:     setLightStatus(message);
+ 904:   }
+ 905: 
+ 906:   async function audio() {
+ 907:     if (!document.querySelector('#sound-on').checked) return null;
+ 908:     try {
+ 909:       if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+ 910:       if (audioContext.state === 'suspended') await audioContext.resume();
+ 911:       return audioContext;
+ 912:     } catch (_) { return null; }
+ 913:   }
+ 914: 
+ 915:   function stopSound(sound) {
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$lines=Get-Content -LiteralPath .'"\\index.html -Encoding utf8; for("'$i=1;$i -le 320;$i++){ '"'{0,4}: {1}' -f "'$i,$lines[$i-1] }' in C:\dev\morse-tag
+ succeeded in 945ms:
+   1: <!DOCTYPE html>
+   2: <html lang="ja">
+   3: <head>
+   4: <meta charset="utf-8">
+   5: <meta name="viewport" content="width=device-width,initial-scale=1">
+   6: </head>
+   7: <body style="margin:0">
+   8: <title>MORSE TAG</title>
+   9: <link rel="preconnect" href="https://fonts.googleapis.com">
+  10: <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  11: <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&family=Saira+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+  12: <style>
+  13:   :root {
+  14:     color-scheme: dark;
+  15:     --ground: #0A0D13;
+  16:     --plate: #151B2B;
+  17:     --silk: #D8DDE5;
+  18:     --edge: #8E97A3;
+  19:     --led-on: #43E36F;
+  20:     --led-off: #25352C;
+  21:     --error: #FF5A5A;
+  22:     --panel: #111722;
+  23:   }
+  24:   * { box-sizing: border-box; }
+  25:   body {
+  26:     margin: 0;
+  27:     min-width: 280px;
+  28:     min-height: 100vh;
+  29:     overflow-x: hidden;
+  30:     background: var(--ground);
+  31:     color: var(--silk);
+  32:     font-family: "Noto Sans JP", system-ui, sans-serif;
+  33:   }
+  34:   button, input, textarea { font: inherit; }
+  35:   button { color: inherit; }
+  36:   button:focus-visible, input:focus-visible {
+  37:     outline: 3px solid var(--led-on);
+  38:     outline-offset: 3px;
+  39:   }
+  40:   .app {
+  41:     width: 100%;
+  42:     max-width: 520px;
+  43:     min-width: 0;
+  44:     margin: 0 auto;
+  45:     padding: 14px 12px 32px;
+  46:   }
+  47:   .app-header {
+  48:     display: flex;
+  49:     align-items: end;
+  50:     justify-content: space-between;
+  51:     gap: 16px;
+  52:     margin: 2px 4px 12px;
+  53:   }
+  54:   .app-header > *, .prompt-row > *, .quiz-row > * { min-width: 0; }
+  55:   h1 {
+  56:     margin: 0;
+  57:     font: 700 clamp(1.55rem, 7vw, 2.25rem)/1 "Saira Semi Condensed", sans-serif;
+  58:     letter-spacing: .12em;
+  59:   }
+  60:   .tagline { margin: 0; color: var(--edge); font-size: .7rem; letter-spacing: .08em; }
+  61:   .plate-wrap { position: relative; width: 100%; min-width: 0; }
+  62:   #plate { display: block; width: 100%; max-width: 100%; height: auto; max-height: 48vh; max-height: 48svh; margin: 0 auto; filter: drop-shadow(0 18px 24px #0009); }
+  63:   .plate-edge { fill: var(--plate); stroke: var(--edge); stroke-width: 3; }
+  64:   .plate-inner { fill: none; stroke: #323b4d; stroke-width: 1; }
+  65:   .plate-title { fill: var(--silk); font: 600 25px "Saira Semi Condensed", sans-serif; letter-spacing: 5px; }
+  66:   .plate-subtitle { fill: var(--edge); font: 600 10px "IBM Plex Mono", monospace; letter-spacing: 4px; }
+  67:   .antenna, .branch { fill: none; stroke: var(--edge); stroke-width: 2; stroke-linecap: round; }
+  68:   .branch { opacity: .74; }
+  69:   .hanger-rim { fill: #080b11; stroke: var(--edge); stroke-width: 4; }
+  70:   .hanger-hole { fill: var(--ground); stroke: #4a5361; stroke-width: 2; }
+  71:   .morse-node { cursor: pointer; }
+  72:   .morse-node .lamp { fill: var(--led-off); stroke: #617068; stroke-width: 1.4; transition: fill .14s, filter .14s, stroke .14s; }
+  73:   .morse-node .node-label { fill: var(--silk); font: 600 18px "Saira Semi Condensed", sans-serif; pointer-events: none; }
+  74:   .morse-node:hover .lamp, .morse-node:focus .lamp { stroke: var(--silk); }
+  75:   .morse-node.active .lamp {
+  76:     fill: var(--led-on);
+  77:     stroke: #baffc6;
+  78:     filter: url(#greenGlow);
+  79:   }
+  80:   .morse-node.error .lamp { fill: var(--error); stroke: #ffc0c0; filter: url(#redGlow); }
+  81:   .morse-node:focus-visible .lamp { stroke: var(--silk); stroke-width: 3; }
+  82:   .node-hit { fill: transparent; stroke: none; }
+  83:   .tabs {
+  84:     display: grid;
+  85:     grid-template-columns: repeat(4, 1fr);
+  86:     gap: 6px;
+  87:     padding: 5px;
+  88:     margin-top: 14px;
+  89:     border: 1px solid #2a3342;
+  90:     border-radius: 14px;
+  91:     background: #0d121b;
+  92:   }
+  93:   .tab {
+  94:     min-width: 0;
+  95:     min-height: 45px;
+  96:     border: 0;
+  97:     border-radius: 10px;
+  98:     background: transparent;
+  99:     color: var(--edge);
+ 100:     font-weight: 700;
+ 101:     cursor: pointer;
+ 102:   }
+ 103:   .tab[aria-selected="true"] { background: #233027; color: var(--led-on); }
+ 104:   .panel {
+ 105:     min-width: 0;
+ 106:     margin-top: 10px;
+ 107:     padding: 16px;
+ 108:     min-height: 178px;
+ 109:     border: 1px solid #293141;
+ 110:     border-radius: 16px;
+ 111:     background: var(--panel);
+ 112:   }
+ 113:   .panel[hidden] { display: none; }
+ 114:   .eyebrow { margin: 0 0 5px; color: var(--edge); font-size: .72rem; letter-spacing: .1em; }
+ 115:   .instruction { margin: 5px 0 0; color: #aeb6c1; font-size: .78rem; line-height: 1.65; }
+ 116:   .readout {
+ 117:     min-height: 52px;
+ 118:     margin: 0;
+ 119:     color: var(--led-on);
+ 120:     font: 600 clamp(2rem, 10vw, 3.1rem)/1.15 "IBM Plex Mono", monospace;
+ 121:     letter-spacing: .15em;
+ 122:   }
+ 123:   .readout .letter { color: var(--silk); font-family: "Saira Semi Condensed", sans-serif; }
+ 124:   .prompt-row, .quiz-row, .stats { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+ 125:   .prompt-letter { color: var(--silk); font: 700 2.5rem/1 "Saira Semi Condensed", sans-serif; }
+ 126:   .key {
+ 127:     width: 100%;
+ 128:     min-height: 78px;
+ 129:     margin-top: 12px;
+ 130:     border: 1px solid #647167;
+ 131:     border-bottom-width: 5px;
+ 132:     border-radius: 16px;
+ 133:     background: #1c2820;
+ 134:     color: var(--led-on);
+ 135:     font-weight: 700;
+ 136:     letter-spacing: .08em;
+ 137:     touch-action: none;
+ 138:     cursor: pointer;
+ 139:     user-select: none;
+ 140:   }
+ 141:   .key.is-down { transform: translateY(3px); border-bottom-width: 2px; background: #29402f; }
+ 142:   .action {
+ 143:     min-height: 42px;
+ 144:     padding: 0 16px;
+ 145:     border: 1px solid #596475;
+ 146:     border-radius: 10px;
+ 147:     background: #222b39;
+ 148:     cursor: pointer;
+ 149:   }
+ 150:   .status { min-height: 1.5em; margin: 10px 0 0; font-size: .82rem; color: #b9c0ca; }
+ 151:   .status.good { color: var(--led-on); }
+ 152:   .status.bad { color: var(--error); }
+ 153:   .stats { margin-top: 14px; padding-top: 12px; border-top: 1px solid #293141; font-size: .8rem; }
+ 154:   .stats strong { font-family: "IBM Plex Mono", monospace; color: var(--silk); }
+ 155:   .convert-input {
+ 156:     width: 100%; min-height: 86px; resize: vertical; padding: 10px 12px;
+ 157:     border: 1px solid #596475; border-radius: 10px; background: #0b1018;
+ 158:     color: var(--silk); line-height: 1.6;
+ 159:   }
+ 160:   .convert-preview, .convert-output {
+ 161:     min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap;
+ 162:     font-family: "IBM Plex Mono", monospace; line-height: 1.7;
+ 163:   }
+ 164:   .convert-preview { min-height: 1.7em; margin: 6px 0 10px; color: #aeb6c1; }
+ 165:   .convert-output { min-height: 1.7em; margin: 2px 0 10px; color: var(--led-on); }
+ 166:   .convert-roman { margin: 2px 0 8px; overflow-wrap: anywhere; color: var(--silk); font-family: "IBM Plex Mono", monospace; }
+ 167:   .convert-error { color: var(--error); text-decoration: underline; text-decoration-thickness: 2px; }
+ 168:   .convert-active { color: #0A0D13; background: var(--led-on); border-radius: 3px; }
+ 169:   .convert-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+ 170:   .convert-actions .action { flex: 0 1 auto; }
+ 171:   .notation-toggle { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; font-size: .78rem; }
+ 172:   .notation-toggle input { width: 19px; height: 19px; accent-color: var(--led-on); }
+ 173:   details {
+ 174:     margin-top: 10px;
+ 175:     border: 1px solid #293141;
+ 176:     border-radius: 14px;
+ 177:     background: #0e141e;
+ 178:   }
+ 179:   summary { padding: 13px 15px; font-weight: 700; cursor: pointer; }
+ 180:   .settings { display: grid; gap: 14px; padding: 3px 15px 16px; }
+ 181:   .setting-line { display: grid; grid-template-columns: 92px 1fr 54px; align-items: center; gap: 10px; font-size: .78rem; }
+ 182:   .setting-line output { text-align: right; font-family: "IBM Plex Mono", monospace; color: var(--led-on); }
+ 183:   input[type="range"] { width: 100%; min-width: 0; accent-color: var(--led-on); }
+ 184:   .switch-line { display: flex; justify-content: space-between; align-items: center; font-size: .78rem; }
+ 185:   .switch-line input { width: 20px; height: 20px; accent-color: var(--led-on); }
+ 186:   .light-status { min-height: 1.5em; margin: -8px 0 0; color: #aeb6c1; font-size: .72rem; line-height: 1.5; }
+ 187:   #screen-flash {
+ 188:     position: fixed; inset: 0; z-index: 9999; display: none;
+ 189:     background: transparent; cursor: pointer; touch-action: manipulation;
+ 190:   }
+ 191:   #screen-flash.running { display: block; }
+ 192:   #screen-flash.on { background: #fff; }
+ 193:   @media (max-width: 360px) {
+ 194:     .app { padding-inline: 7px; }
+ 195:     .panel { padding: 13px; }
+ 196:     .tagline { display: none; }
+ 197:   }
+ 198:   @media (max-width: 430px) {
+ 199:     .app-header { gap: 8px; }
+ 200:     h1 { font-size: clamp(1.35rem, 6.2vw, 1.6rem); }
+ 201:     .tagline { font-size: .65rem; }
+ 202:   }
+ 203:   @media (max-width: 420px) and (max-height: 700px) {
+ 204:     .app { padding-top: 8px; padding-bottom: 12px; }
+ 205:     .app-header { margin-bottom: 6px; }
+ 206:     .tabs { margin-top: 8px; padding: 4px; }
+ 207:     .tab { min-height: 38px; }
+ 208:     .panel { min-height: 145px; margin-top: 6px; padding: 10px 12px; }
+ 209:     .readout { min-height: 40px; }
+ 210:     .key { min-height: 58px; margin-top: 6px; }
+ 211:     .instruction { line-height: 1.4; }
+ 212:     .status { margin-top: 6px; }
+ 213:     .convert-actions .action { flex: 1 1 82px; padding-inline: 10px; }
+ 214:   }
+ 215:   @media (prefers-reduced-motion: reduce) {
+ 216:     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+ 217:   }
+ 218: </style>
+ 219: 
+ 220: <main class="app">
+ 221:   <header class="app-header">
+ 222:     <h1>MORSE TAG</h1>
+ 223:     <p class="tagline">光でたどる、音で覚える</p>
+ 224:   </header>
+ 225: 
+ 226:   <div class="plate-wrap">
+ 227:     <svg id="plate" viewBox="0 0 520 760" role="img" aria-labelledby="plate-name plate-desc">
+ 228:       <title id="plate-name">モールス符号の二分木プレート</title>
+ 229:       <desc id="plate-desc">左に長音で始まる文字、右に短点で始まる文字を配置した練習用プレート</desc>
+ 230:       <defs>
+ 231:         <filter id="greenGlow" x="-200%" y="-200%" width="500%" height="500%">
+ 232:           <feGaussianBlur stdDeviation="6" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+ 233:         </filter>
+ 234:         <filter id="redGlow" x="-200%" y="-200%" width="500%" height="500%">
+ 235:           <feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+ 236:         </filter>
+ 237:       </defs>
+ 238:       <rect class="plate-edge" x="6" y="6" width="508" height="748" rx="34"/>
+ 239:       <rect class="plate-inner" x="14" y="14" width="492" height="732" rx="27"/>
+ 240:       <circle class="hanger-rim" cx="469" cy="52" r="23"/><circle class="hanger-hole" cx="469" cy="52" r="11"/>
+ 241:       <text class="plate-title" x="42" y="58">MORSE</text>
+ 242:       <text class="plate-subtitle" x="414" y="78" text-anchor="end">CODE</text>
+ 243:       <g aria-hidden="true">
+ 244:         <path class="antenna" d="M260 146V111M246 124a20 20 0 0 1 28 0M236 114a34 34 0 0 1 48 0"/>
+ 245:         <circle cx="260" cy="146" r="4" fill="#D8DDE5"/>
+ 246:       </g>
+ 247:       <g id="branches" aria-hidden="true"></g>
+ 248:       <g id="nodes"></g>
+ 249:     </svg>
+ 250:   </div>
+ 251: 
+ 252:   <nav class="tabs" role="tablist" aria-label="練習モード">
+ 253:     <button class="tab" id="tab-explore" role="tab" aria-selected="true" aria-controls="panel-explore" data-mode="explore">さわる</button>
+ 254:     <button class="tab" id="tab-key" role="tab" aria-selected="false" aria-controls="panel-key" data-mode="key">打つ</button>
+ 255:     <button class="tab" id="tab-quiz" role="tab" aria-selected="false" aria-controls="panel-quiz" data-mode="quiz">聞く</button>
+ 256:     <button class="tab" id="tab-convert" role="tab" aria-selected="false" aria-controls="panel-convert" data-mode="convert">変換</button>
+ 257:   </nav>
+ 258: 
+ 259:   <section class="panel" id="panel-explore" role="tabpanel" aria-labelledby="tab-explore">
+ 260:     <p class="eyebrow">選んだ文字</p>
+ 261:     <p class="readout"><span class="letter" id="explore-letter">E</span>&nbsp; <span id="explore-code">・</span></p>
+ 262:     <p class="instruction">プレートの文字を押すと、根から光と音が順番にたどります。</p>
+ 263:   </section>
+ 264: 
+ 265:   <section class="panel" id="panel-key" role="tabpanel" aria-labelledby="tab-key" hidden>
+ 266:     <div class="prompt-row">
+ 267:       <div><p class="eyebrow">お題</p><div class="prompt-letter" id="key-prompt">A</div></div>
+ 268:       <div><p class="eyebrow">入力</p><p class="readout" id="key-code">—</p></div>
+ 269:     </div>
+ 270:     <button class="key" id="telegraph-key" type="button">長さを変えて押す</button>
+ 271:     <p class="instruction">短く押すと「・」、長く押すと「－」。スペースキーでも打てます。</p>
+ 272:     <p class="status" id="key-status" aria-live="polite"></p>
+ 273:   </section>
+ 274: 
+ 275:   <section class="panel" id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden>
+ 276:     <div class="quiz-row">
+ 277:       <div><p class="eyebrow">音を聞いて文字を選ぶ</p><p class="readout" id="quiz-mark">？？</p></div>
+ 278:       <button class="action" id="play-quiz" type="button">問題を出す</button>
+ 279:     </div>
+ 280:     <p class="status" id="quiz-status" aria-live="polite">「問題を出す」を押してください。</p>
+ 281:     <div class="stats"><span>正答率 <strong id="accuracy">—</strong></span><span>連続正解 <strong id="streak">0</strong></span></div>
+ 282:   </section>
+ 283: 
+ 284:   <section class="panel" id="panel-convert" role="tabpanel" aria-labelledby="tab-convert" hidden>
+ 285:     <label class="eyebrow" for="convert-input">テキスト</label>
+ 286:     <textarea class="convert-input" id="convert-input" rows="3">こんにちは</textarea>
+ 287:     <div class="convert-preview" id="convert-preview" aria-label="入力内容"></div>
+ 288:     <p class="eyebrow">ローマ字</p>
+ 289:     <p class="convert-roman" id="convert-roman"></p>
+ 290:     <p class="eyebrow">モールス</p>
+ 291:     <div class="convert-output" id="convert-output"></div>
+ 292:     <div class="convert-actions">
+ 293:       <button class="action" id="play-convert" type="button">再生</button>
+ 294:       <button class="action" id="stop-convert" type="button" disabled>停止</button>
+ 295:       <button class="action" id="copy-convert" type="button">コピー</button>
+ 296:       <label class="notation-toggle"><input id="ascii-notation" type="checkbox">.- 表記</label>
+ 297:     </div>
+ 298:     <p class="status" id="convert-status" aria-live="polite"></p>
+ 299:   </section>
+ 300: 
+ 301:   <details>
+ 302:     <summary>音と練習の設定</summary>
+ 303:     <div class="settings">
+ 304:       <label class="setting-line"><span>速度</span><input id="wpm" type="range" min="5" max="30" value="20"><output id="wpm-out">20 WPM</output></label>
+ 305:       <label class="setting-line"><span>周波数</span><input id="frequency" type="range" min="400" max="900" step="25" value="600"><output id="frequency-out">600 Hz</output></label>
+ 306:       <label class="switch-line"><span>音を鳴らす</span><input id="sound-on" type="checkbox" checked></label>
+ 307:       <label class="switch-line"><span>聞くモードで光を表示</span><input id="quiz-light" type="checkbox" checked></label>
+ 308:       <label class="switch-line"><span>光で送る</span><input id="signal-light" type="checkbox"></label>
+ 309:       <p class="light-status" id="light-status" aria-live="polite">オフ</p>
+ 310:     </div>
+ 311:   </details>
+ 312: </main>
+ 313: 
+ 314: <div id="screen-flash" role="button" tabindex="-1" aria-label="画面フラッシュを停止"></div>
+ 315: 
+ 316: <script>
+ 317: (() => {
+ 318:   'use strict';
+ 319: 
+ 320:   // A–Z の唯一の符号表。描画・経路・判定はすべてこの表から導出する。
+
+codex
+現時点で、指定された「lookbehind / static block / structuredClone / wakeLock直呼び」は実コードにはありません。全停止に最も近いのは初期化前半の互換APIですが、`Array.at()` の初回だけは例外が握り潰されるため、イベント登録停止には直結しない点まで確認できています。次に Safari の対応版と、実際のタップ遮断経路を照合します。
+web search: 
+web search: site:webkit.org/blog Safari 15.4 Array.prototype.at small large dynamic viewport units ...
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "git status --short; Select-String -LiteralPath .\\index.html -Pattern '(?<"'!['"\\w"'$])(?:new'"\\s+)?(?:window\\.|document\\.|navigator\\.|[A-Za-z_"'$]['"\\w"'$]*'"\\.)[A-Za-z_"'$]['"\\w"'$]*'"\\s*\\(' -AllMatches | ForEach-Object { "'$n=$_.LineNumber; $_.Matches.Value | ForEach-Object { '"'{0,4}: {1}' -f "'$n,$_.Trim() } } | Sort-Object -Unique' in C:\dev\morse-tag
+ succeeded in 1179ms:
+warning: unable to access 'C:\Users\kenta/.config/git/ignore': Permission denied
+warning: unable to access 'C:\Users\kenta/.config/git/ignore': Permission denied
+ M index.html
+?? codex-ios.log
+ 317: window.addEventListener(
+ 318: document.getElementById(
+ 320: document.createElement(
+ 333: Object.freeze(
+ 339: Object.freeze(
+ 344: Object.freeze(
+ 345: Object.freeze(
+ 365: Object.freeze(
+ 371: Object.entries(
+ 371: Object.fromEntries(
+ 373: document.querySelector(
+ 374: document.querySelector(
+ 410: Object.fromEntries(
+ 410: Object.keys(
+ 412: JSON.parse(
+ 412: localStorage.getItem(
+ 414: Object.keys(
+ 421: document.createElementNS(
+ 422: el.setAttribute(
+ 422: Object.entries(
+ 429: Math.abs(
+ 433: Object.fromEntries(
+ 433: Object.keys(
+ 434: Object.entries(
+ 435: code.slice(
+ 442: Object.entries(
+ 449: Math.max(
+ 449: Math.min(
+ 458: Object.entries(
+ 460: code.slice(
+ 463: branchesLayer.append(
+ 469: code.endsWith(
+ 472: group.append(
+ 474: group.append(
+ 476: group.append(
+ 481: group.append(
+ 482: nodesLayer.append(
+ 487: Object.keys(
+ 488: Object.values(
+ 489: Object.keys(
+ 491: layout.some(
+ 491: letters.some(
+ 497: code.slice(
+ 501: Object.entries(
+ 502: position.join(
+ 503: at.get(
+ 503: at.has(
+ 504: at.set(
+ 506: Object.entries(
+ 508: code.slice(
+ 519: Object.entries(
+ 525: Object.entries(
+ 529: Object.entries(
+ 530: Object.entries(
+ 534: Object.entries(
+ 536: Object.entries(
+ 543: code.replaceAll(
+ 544: code.replaceAll(
+ 546: char.codePointAt(
+ 547: String.fromCodePoint(
+ 551: input.normalize(
+ 560: u.test(
+ 561: errors.push(
+ 566: romanParts.join(
+ 567: soFar.match(
+ 568: romanMap.push(
+ 568: romanParts.push(
+ 569: errors.push(
+ 579: syllable.match(
+ 579: syllable.startsWith(
+ 580: romanMap.push(
+ 580: romanParts.push(
+ 583: romanParts.push(
+ 584: romanMap.push(
+ 589: original.toUpperCase(
+ 589: romanMap.push(
+ 589: romanParts.push(
+ 591: romanMap.push(
+ 591: romanParts.push(
+ 591: u.test(
+ 592: errors.push(
+ 595: romanParts.join(
+ 596: rawRoman.replace(
+ 597: rawRoman.search(
+ 598: Math.max(
+ 598: romanMap.slice(
+ 602: morseTokens.push(
+ 603: char.toUpperCase(
+ 605: morseTokens.push(
+ 606: errors.push(
+ 612: input.normalize(
+ 618: Math.max(
+ 625: KANJI_PATTERN.test(
+ 626: errors.push(
+ 630: errors.forEach(
+ 630: errors.push(
+ 632: Math.max(
+ 632: Math.min(
+ 635: pieces.push(
+ 636: sourceIndexes.push(
+ 637: sourceIndexes.push(
+ 639: pieces.join(
+ 644: morseTokens.push(
+ 648: morseTokens.push(
+ 653: Promise.resolve(
+ 658: kuromoji.builder(
+ 666: document.createElement(
+ 669: script.addEventListener(
+ 670: script.addEventListener(
+ 671: body.append(
+ 681: activeTokenizer.tokenize(
+ 681: console.assert(
+ 681: roman.toUpperCase(
+ 682: activeTokenizer.tokenize(
+ 682: console.assert(
+ 682: roman.toUpperCase(
+ 685: morseTokens.map(
+ 688: classList.remove(
+ 688: document.querySelectorAll(
+ 689: document.querySelector(
+ 690: document.querySelector(
+ 696: document.querySelector(
+ 697: errors.map(
+ 698: document.querySelector(
+ 699: preview.replaceChildren(
+ 700: document.createElement(
+ 703: classList.add(
+ 703: errorIndexes.has(
+ 706: document.querySelector(
+ 707: document.querySelector(
+ 708: morseTokens.flatMap(
+ 708: output.replaceChildren(
+ 709: document.createElement(
+ 712: document.createTextNode(
+ 714: errors.some(
+ 715: errors.some(
+ 716: document.querySelector(
+ 721: document.querySelector(
+ 722: KANJI_PATTERN.test(
+ 727: document.querySelector(
+ 729: input.normalize(
+ 730: activeTokenizer.tokenize(
+ 732: console.warn(
+ 742: classList.remove(
+ 742: document.querySelectorAll(
+ 745: classList.add(
+ 745: document.querySelector(
+ 746: classList.add(
+ 746: document.querySelector(
+ 750: morseTokens.some(
+ 751: document.querySelector(
+ 752: document.querySelector(
+ 753: document.querySelector(
+ 754: document.querySelector(
+ 759: morseTokens.forEach(
+ 762: classList.remove(
+ 762: document.querySelectorAll(
+ 767: code.slice(
+ 768: classList.add(
+ 772: classList.remove(
+ 779: classList.remove(
+ 779: document.querySelectorAll(
+ 780: document.querySelector(
+ 785: document.querySelector(
+ 788: clipboard.writeText(
+ 790: document.createElement(
+ 792: body.append(
+ 792: document.execCommand(
+ 792: helper.remove(
+ 792: helper.select(
+ 794: document.querySelector(
+ 795: document.querySelector(
+ 797: document.querySelector(
+ 798: Math.floor(
+ 798: Math.random(
+ 798: String.fromCharCode(
+ 799: document.querySelector(
+ 803: timers.clear(
+ 807: classList.remove(
+ 807: document.querySelectorAll(
+ 812: timers.delete(
+ 813: timers.add(
+ 818: document.querySelector(
+ 823: window.confirm(
+ 835: mediaDevices.getUserMedia(
+ 836: document.querySelector(
+ 837: item.stop(
+ 837: stream.getTracks(
+ 840: stream.getVideoTracks(
+ 848: item.stop(
+ 848: stream.getTracks(
+ 856: document.querySelector(
+ 858: document.querySelector(
+ 868: document.querySelector(
+ 870: lightTrack.applyConstraints(
+ 872: classList.toggle(
+ 872: document.querySelector(
+ 877: document.querySelector(
+ 885: wakeLock.request(
+ 886: lock.release(
+ 888: lock.addEventListener(
+ 893: document.querySelector(
+ 895: classList.add(
+ 895: document.querySelector(
+ 903: lightTrack.applyConstraints(
+ 905: classList.remove(
+ 905: document.querySelector(
+ 906: wakeLock.release(
+ 911: lightStream.getTracks(
+ 911: track.stop(
+ 919: document.querySelector(
+ 922: audioContext.resume(
+ 928: activeSounds.has(
+ 931: gain.cancelScheduledValues(
+ 932: gain.setValueAtTime(
+ 932: Math.max(
+ 933: gain.exponentialRampToValueAtTime(
+ 934: osc.stop(
+ 936: activeSounds.delete(
+ 949: ctx.createOscillator(
+ 950: ctx.createGain(
+ 951: document.querySelector(
+ 953: gain.setValueAtTime(
+ 954: gain.exponentialRampToValueAtTime(
+ 954: Math.min(
+ 955: gain.setValueAtTime(
+ 955: Math.max(
+ 956: gain.exponentialRampToValueAtTime(
+ 957: osc.connect(
+ 959: activeSounds.add(
+ 960: activeSounds.delete(
+ 961: osc.start(
+ 961: osc.stop(
+ 967: ctx.createOscillator(
+ 968: ctx.createGain(
+ 970: document.querySelector(
+ 972: gain.setValueAtTime(
+ 973: gain.exponentialRampToValueAtTime(
+ 974: osc.connect(
+ 976: activeSounds.add(
+ 977: activeSounds.delete(
+ 978: osc.start(
+ 991: code.slice(
+ 992: classList.add(
+ 996: classList.remove(
+ 999: classList.add(
+1006: document.querySelector(
+1007: document.querySelector(
+1016: document.querySelector(
+1017: document.querySelector(
+1018: document.querySelector(
+1019: document.querySelector(
+1019: Math.round(
+1020: document.querySelector(
+1021: classList.add(
+1023: document.querySelector(
+1030: classList.add(
+1031: classList.remove(
+1035: JSON.stringify(
+1035: localStorage.setItem(
+1040: Object.keys(
+1042: Math.max(
+1043: bag.push(
+1043: Math.min(
+1045: Math.floor(
+1045: Math.random(
+1050: performance.now(
+1051: classList.add(
+1051: document.querySelector(
+1052: document.querySelector(
+1060: performance.now(
+1063: Math.max(
+1064: classList.remove(
+1064: document.querySelector(
+1065: document.querySelector(
+1069: document.querySelector(
+1072: code.startsWith(
+1072: Object.values(
+1074: document.querySelector(
+1075: document.querySelector(
+1076: classList.add(
+1076: document.querySelectorAll(
+1080: classList.add(
+1081: Math.max(
+1086: classList.remove(
+1086: document.querySelector(
+1087: document.querySelector(
+1094: document.querySelector(
+1095: classList.remove(
+1095: document.querySelectorAll(
+1108: document.querySelector(
+1109: document.querySelector(
+1116: document.querySelector(
+1132: document.querySelectorAll(
+1134: tab.setAttribute(
+1137: document.querySelectorAll(
+1138: classList.add(
+1138: document.querySelector(
+1139: document.querySelector(
+1143: console.warn(
+1145: ready.then(
+1146: document.querySelector(
+1147: classList.add(
+1149: nodesLayer.addEventListener(
+1150: target.closest(
+1153: nodesLayer.addEventListener(
+1154: target.closest(
+1155: event.preventDefault(
+1157: document.querySelector(
+1158: target.closest(
+1161: document.querySelectorAll(
+1161: tab.addEventListener(
+1163: document.querySelectorAll(
+1165: tabs.indexOf(
+1166: next.focus(
+1169: document.querySelector(
+1170: event.preventDefault(
+1170: keyButton.addEventListener(
+1170: keyButton.setPointerCapture(
+1171: keyButton.addEventListener(
+1172: keyButton.addEventListener(
+1173: window.addEventListener(
+1175: event.preventDefault(
+1179: window.addEventListener(
+1180: event.preventDefault(
+1183: document.querySelector(
+1185: document.querySelector(
+1186: document.querySelector(
+1187: document.querySelector(
+1188: document.querySelector(
+1189: document.querySelector(
+1191: document.querySelector(
+1192: document.querySelector(
+1193: document.querySelector(
+1197: document.querySelector(
+1199: document.querySelector(
+1201: document.addEventListener(
+1204: document.querySelector(
+1205: document.querySelector(
+1210: document.querySelector(
+1211: document.querySelector(
+1212: document.querySelector(
+1214: document.querySelector(
+1216: document.querySelector(
+1220: document.querySelector(
+1224: classList.add(
+1227: console.assert(
+1227: roman.toUpperCase(
+1228: console.assert(
+1228: roman.toUpperCase(
+1229: console.assert(
+1229: roman.toUpperCase(
+1230: console.assert(
+1231: console.assert(
+1231: errors.every(
+
+codex
+調査中に `index.html` が外部で更新され、行番号と内容が変わりました（こちらは編集していません）。現在の作業ツリー版を正として再走査します。差分を読み、先ほどの旧行番号を混ぜないようにします。
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Item -LiteralPath .\\index.html | Select-Object Length,LastWriteTime; git diff --stat -- index.html; git diff --unified=2 -- index.html" in C:\dev\morse-tag
+ succeeded in 883ms:
+
+warning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it
+ index.html | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+warning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it
+diff --git a/index.html b/index.html
+index 60fbaff..36cc007 100644
+--- a/index.html
++++ b/index.html
+@@ -314,4 +314,16 @@
+ <div id="screen-flash" role="button" tabindex="-1" aria-label="画面フラッシュを停止"></div>
+ 
++<script>
++window.addEventListener('error', function (e) {
++  var box = document.getElementById('fatal-error');
++  if (!box) {
++    box = document.createElement('div');
++    box.id = 'fatal-error';
++    box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;padding:10px 12px;border-radius:10px;background:#3a0d0d;color:#ffd6d6;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-all';
++    (document.body || document.documentElement).appendChild(box);
++  }
++  box.textContent = 'エラー（この画面をスクショで送ってください）\n' + (e.message || e.error) + '\n行: ' + (e.lineno || '?') + '\n' + navigator.userAgent;
++});
++</script>
+ <script>
+ (() => {
+@@ -496,5 +508,5 @@
+       const parent = reverse[code.slice(0, -1)];
+       const actual = direction(POS[parent], POS[letter]);
+-      const mark = code.at(-1);
++      const mark = code[code.length - 1];
+       const expected = code[0] === '.' ? (mark === '.' ? 'right' : 'down') : (mark === '-' ? 'left' : 'down');
+       if (actual !== expected && !(letter === 'F' && actual === 'down')) {
+@@ -588,5 +600,5 @@
+     for (let i = 0; i < roman.length; i++) {
+       const char = roman[i];
+-      if (char === ' ') { if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
++      if (char === ' ') { if ((morseTokens[morseTokens.length - 1] || {}).char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
+       const morseChar = char.toUpperCase();
+       const code = ALL_MORSE[morseChar];
+@@ -630,5 +642,5 @@
+       const char = roman[i].toUpperCase();
+       if (char === ' ') {
+-        if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
++        if ((morseTokens[morseTokens.length - 1] || {}).char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+         continue;
+       }
+Length LastWriteTime       
+------ -------------       
+ 58042 9/15/2026 5:45:39 PM
+
+
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$terms=@('"'(?<=','(?<"'!'"','?.','??','static {','.at(','structuredClone','replaceAll','wakeLock','getUserMedia','torch','AudioContext','webkitAudioContext','pointer','svh','dvh','lvh','replaceChildren','flatMap','Object.fromEntries','setPointerCapture','addEventListener'); Select-String -LiteralPath .\\index.html -Encoding utf8 -SimpleMatch -Pattern "'$terms | Sort-Object LineNumber | ForEach-Object { '"'{0,4}: {1}' -f "'$_.LineNumber,$_.Line.Trim() }' in C:\dev\morse-tag
+ succeeded in 904ms:
+  62: #plate { display: block; width: 100%; max-width: 100%; height: auto; max-height: 48vh; max-height: 48svh; margin: 0 auto; filter: drop-shadow(0 18px 24px #0009); }
+  71: .morse-node { cursor: pointer; }
+  73: .morse-node .node-label { fill: var(--silk); font: 600 18px "Saira Semi Condensed", sans-serif; pointer-events: none; }
+ 101: cursor: pointer;
+ 138: cursor: pointer;
+ 148: cursor: pointer;
+ 179: summary { padding: 13px 15px; font-weight: 700; cursor: pointer; }
+ 189: background: transparent; cursor: pointer; touch-action: manipulation;
+ 317: window.addEventListener('error', function (e) {
+ 371: const reverse = Object.fromEntries(Object.entries(MORSE).map(([letter, code]) => [code, letter]));
+ 379: let audioContext = null;
+ 403: let wakeLock = null;
+ 410: let progress = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, { correct: 0, wrong: 0 }]));
+ 433: const connected = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, new Set()]));
+ 543: function spokenCode(code) { return code.replaceAll('.', '短点、').replaceAll('-', '長音、').replace(/、$/, ''); }
+ 544: function displayCode(code) { return code.replaceAll('.', '・').replaceAll('-', '－'); }
+ 567: const vowel = soFar.match(/[aeiou](?=[^aeiou]*$)/i)?.[0];
+ 579: const doubled = syllable.startsWith('ch') ? 't' : (syllable.match(/^[bcdfghjklmnpqrstvwxyz]/)?.[0] || '');
+ 606: else errors.push({ index: map[i] ?? -1, char, type: 'unsupported' });
+ 644: if ((morseTokens[morseTokens.length - 1] || {}).char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+ 648: if (code) morseTokens.push({ char, code, sourceIndex: sourceIndexes[i] ?? 0 });
+ 669: script.addEventListener('load', build, { once: true });
+ 670: script.addEventListener('error', () => reject(new Error('Kuromoji を読み込めませんでした')), { once: true });
+ 699: preview.replaceChildren(...[...conversion.normalized].map((char, index) => {
+ 708: output.replaceChildren(...conversion.morseTokens.flatMap((token, index) => {
+ 743: const token = conversion?.morseTokens[tokenIndex];
+ 745: document.querySelector(`#convert-preview [data-source-index="${token.sourceIndex}"]`)?.classList.add('convert-active');
+ 746: document.querySelector(`#convert-output [data-token-index="${tokenIndex}"]`)?.classList.add('convert-active');
+ 750: if (!conversion?.morseTokens.some(token => token.char !== ' ')) return;
+ 768: if (stepLetter) later(() => node(stepLetter)?.classList.add('active'), cursor);
+ 772: if (stepLetter) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+ 834: if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+ 835: const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+ 841: if (track?.getCapabilities?.().torch) {
+ 844: lightMethod = 'torch';
+ 850: if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+ 869: if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 870: try { await lightTrack.applyConstraints({ advanced: [{ torch: on }] }); } catch (_) {}
+ 882: async function acquireWakeLock(epoch) {
+ 883: if (!('wakeLock' in navigator)) return;
+ 885: const lock = await navigator.wakeLock.request('screen');
+ 887: wakeLock = lock;
+ 888: lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+ 896: acquireWakeLock(epoch);
+ 902: if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 903: lightTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+ 906: if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+ 921: if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+ 922: if (audioContext.state === 'suspended') await audioContext.resume();
+ 923: return audioContext;
+ 992: if (showLight) later(() => node(stepLetter)?.classList.add('active'), cursor);
+ 996: if (showLight) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+ 999: if (showLight) later(() => node(letter)?.classList.add('active'), cursor);
+1021: node(quizTarget)?.classList.add('active');
+1080: if (current) node(current)?.classList.add('active');
+1138: if (next === 'explore') node(document.querySelector('#explore-letter').textContent)?.classList.add('active');
+1145: document.fonts?.ready.then(safeValidate);
+1149: nodesLayer.addEventListener('click', event => {
+1153: nodesLayer.addEventListener('keydown', event => {
+1157: document.querySelector('.tabs').addEventListener('click', event => {
+1161: document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('keydown', event => {
+1170: keyButton.addEventListener('pointerdown', event => { event.preventDefault(); keyButton.setPointerCapture(event.pointerId); beginKey(); });
+1171: keyButton.addEventListener('pointerup', endKey);
+1172: keyButton.addEventListener('pointercancel', cancelKeyPress);
+1173: window.addEventListener('keydown', event => {
+1179: window.addEventListener('keyup', event => {
+1183: document.querySelector('#play-quiz').addEventListener('click', () => {
+1191: document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
+1192: document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+1193: document.querySelector('#signal-light').addEventListener('change', async event => {
+1197: document.querySelector('#screen-flash').addEventListener('pointerdown', () => {
+1201: document.addEventListener('visibilitychange', () => {
+1210: document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
+1211: document.querySelector('#play-convert').addEventListener('click', playConversion);
+1212: document.querySelector('#stop-convert').addEventListener('click', () => {
+1216: document.querySelector('#copy-convert').addEventListener('click', copyConversion);
+
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command '$lines=Get-Content -LiteralPath .'"\\index.html -Encoding utf8; foreach("'$range in @(@(312,380),@(530,655),@(825,930),@(1138,1225))){ for($i=$range[0];$i -le $range[1];$i++){ '"'{0,4}: {1}' -f "'$i,$lines[$i-1] } }' in C:\dev\morse-tag
+ succeeded in 1004ms:
+ 312: </main>
+ 313: 
+ 314: <div id="screen-flash" role="button" tabindex="-1" aria-label="画面フラッシュを停止"></div>
+ 315: 
+ 316: <script>
+ 317: window.addEventListener('error', function (e) {
+ 318:   var box = document.getElementById('fatal-error');
+ 319:   if (!box) {
+ 320:     box = document.createElement('div');
+ 321:     box.id = 'fatal-error';
+ 322:     box.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;padding:10px 12px;border-radius:10px;background:#3a0d0d;color:#ffd6d6;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-all';
+ 323:     (document.body || document.documentElement).appendChild(box);
+ 324:   }
+ 325:   box.textContent = 'エラー（この画面をスクショで送ってください）\n' + (e.message || e.error) + '\n行: ' + (e.lineno || '?') + '\n' + navigator.userAgent;
+ 326: });
+ 327: </script>
+ 328: <script>
+ 329: (() => {
+ 330:   'use strict';
+ 331: 
+ 332:   // A–Z の唯一の符号表。描画・経路・判定はすべてこの表から導出する。
+ 333:   const MORSE = Object.freeze({
+ 334:     A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.',
+ 335:     H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--', N: '-.',
+ 336:     O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-',
+ 337:     V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..'
+ 338:   });
+ 339:   const MORSE_EXTRA = Object.freeze({
+ 340:     0:'-----', 1:'.----', 2:'..---', 3:'...--', 4:'....-', 5:'.....', 6:'-....', 7:'--...', 8:'---..', 9:'----.',
+ 341:     '.':'.-.-.-', ',':'--..--', '?':'..--..', '!':'-.-.--', '/':'-..-.', '(':'-.--.', ')':'-.--.-',
+ 342:     '&':'.-...', ':':'---...', ';':'-.-.-.', '=':'-...-', '+':'.-.-.', '-':'-....-', '_':'..--.-', '"':'.-..-.', "'":'.----.', '@':'.--.-.'
+ 343:   });
+ 344:   const ALL_MORSE = Object.freeze({ ...MORSE, ...MORSE_EXTRA });
+ 345:   const KANA = Object.freeze({
+ 346:     'あ':'a','い':'i','う':'u','え':'e','お':'o', 'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+ 347:     'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so', 'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+ 348:     'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no', 'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+ 349:     'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo', 'や':'ya','ゆ':'yu','よ':'yo',
+ 350:     'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro', 'わ':'wa','を':'o','ん':'n',
+ 351:     'が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go', 'ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo',
+ 352:     'だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do', 'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
+ 353:     'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po', 'ゔ':'vu',
+ 354:     'きゃ':'kya','きゅ':'kyu','きょ':'kyo','しゃ':'sha','しゅ':'shu','しょ':'sho','ちゃ':'cha','ちゅ':'chu','ちょ':'cho',
+ 355:     'にゃ':'nya','にゅ':'nyu','にょ':'nyo','ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo','みゃ':'mya','みゅ':'myu','みょ':'myo',
+ 356:     'りゃ':'rya','りゅ':'ryu','りょ':'ryo','ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo','じゃ':'ja','じゅ':'ju','じょ':'jo',
+ 357:     'ぢゃ':'ja','ぢゅ':'ju','ぢょ':'jo','びゃ':'bya','びゅ':'byu','びょ':'byo','ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+ 358:     'しぇ':'she','じぇ':'je','ちぇ':'che','ふぁ':'fa','ふぃ':'fi','ふぇ':'fe','ふぉ':'fo','てぃ':'ti','でぃ':'di',
+ 359:     'とぅ':'tu','どぅ':'du','うぃ':'wi','うぇ':'we','うぉ':'wo','くぁ':'kwa','くぃ':'kwi','くぇ':'kwe','くぉ':'kwo',
+ 360:     'ぐぁ':'gwa','ぐぃ':'gwi','ぐぇ':'gwe','ぐぉ':'gwo','つぁ':'tsa','つぃ':'tsi','つぇ':'tse','つぉ':'tso',
+ 361:     'ゔぁ':'va','ゔぃ':'vi','ゔぇ':'ve','ゔぉ':'vo'
+ 362:   });
+ 363: 
+ 364:   // 写真のレイアウト座標。path は上の符号表と起動時に照合する。
+ 365:   const POS = Object.freeze({
+ 366:     O:[58,192], M:[126,192], T:[198,192], E:[322,192], I:[388,192], S:[448,192], H:[492,192],
+ 367:     G:[126,282], Q:[58,282], Z:[126,340], N:[198,420], K:[126,420], Y:[58,420], C:[126,500],
+ 368:     D:[198,580], X:[126,580], B:[198,670], U:[388,282], F:[388,340], V:[448,282],
+ 369:     A:[322,420], R:[400,420], L:[474,420], W:[322,580], P:[400,580], J:[322,670]
+ 370:   });
+ 371:   const reverse = Object.fromEntries(Object.entries(MORSE).map(([letter, code]) => [code, letter]));
+ 372:   const root = [260,146];
+ 373:   const nodesLayer = document.querySelector('#nodes');
+ 374:   const branchesLayer = document.querySelector('#branches');
+ 375:   const NS = 'http://www.w3.org/2000/svg';
+ 376:   const timers = new Set();
+ 377:   const activeSounds = new Set();
+ 378:   let mode = 'explore';
+ 379:   let audioContext = null;
+ 380:   let audioEpoch = 0;
+ 530:       for (const [other, otherBox] of Object.entries(labelBoxes)) {
+ 531:         if (letter < other && overlaps(box, otherBox)) throw new Error(`${letter}: ${other} とラベルが重なっています。`);
+ 532:       }
+ 533:     }
+ 534:     for (const [letter, hit] of Object.entries(hits)) {
+ 535:       if (hit.left < 15 || hit.right > 505) throw new Error(`${letter}: 当たり判定が板の外です。`);
+ 536:       for (const [other, otherHit] of Object.entries(hits)) {
+ 537:         if (letter < other && overlaps(hit, otherHit)) throw new Error(`${letter}: ${other} と当たり判定が重なっています。`);
+ 538:       }
+ 539:     }
+ 540:     return true;
+ 541:   }
+ 542: 
+ 543:   function spokenCode(code) { return code.replaceAll('.', '短点、').replaceAll('-', '長音、').replace(/、$/, ''); }
+ 544:   function displayCode(code) { return code.replaceAll('.', '・').replaceAll('-', '－'); }
+ 545:   function toHiragana(char) {
+ 546:     const code = char.codePointAt(0);
+ 547:     return code >= 0x30A1 && code <= 0x30F6 ? String.fromCodePoint(code - 0x60) : char;
+ 548:   }
+ 549:   // DOM や設定値に依存しない純粋な変換関数。
+ 550:   function convertText(input) {
+ 551:     const normalized = input.normalize('NFKC').replace(/[、。]/g, ' ').replace(/？/g, '?').replace(/！/g, '!');
+ 552:     const chars = [...normalized];
+ 553:     const romanParts = [];
+ 554:     const errors = [];
+ 555:     const romanMap = [];
+ 556:     let pendingSmallTsu = false;
+ 557:     for (let i = 0; i < chars.length; i++) {
+ 558:       const original = chars[i];
+ 559:       const hira = toHiragana(original);
+ 560:       if (/^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff々〆〇]$/u.test(original)) {
+ 561:         errors.push({ index: i, char: original, type: 'kanji' });
+ 562:         continue;
+ 563:       }
+ 564:       if (hira === 'っ') { pendingSmallTsu = true; continue; }
+ 565:       if (hira === 'ー') {
+ 566:         const soFar = romanParts.join('');
+ 567:         const vowel = soFar.match(/[aeiou](?=[^aeiou]*$)/i)?.[0];
+ 568:         if (vowel) { romanParts.push(vowel); romanMap.push(i); }
+ 569:         else errors.push({ index: i, char: original, type: 'unsupported' });
+ 570:         continue;
+ 571:       }
+ 572:       const pair = i + 1 < chars.length ? hira + toHiragana(chars[i + 1]) : '';
+ 573:       let syllable = KANA[pair];
+ 574:       let consumed = 1;
+ 575:       if (syllable) consumed = 2;
+ 576:       else syllable = KANA[hira];
+ 577:       if (syllable) {
+ 578:         if (pendingSmallTsu) {
+ 579:           const doubled = syllable.startsWith('ch') ? 't' : (syllable.match(/^[bcdfghjklmnpqrstvwxyz]/)?.[0] || '');
+ 580:           if (doubled) { romanParts.push(doubled); romanMap.push(i); }
+ 581:           pendingSmallTsu = false;
+ 582:         }
+ 583:         romanParts.push(syllable);
+ 584:         for (let j = 0; j < syllable.length; j++) romanMap.push(i);
+ 585:         if (consumed === 2) i++;
+ 586:         continue;
+ 587:       }
+ 588:       if (/^[A-Za-z0-9.,?!/()&:;=+_"'@\-]$/.test(original)) {
+ 589:         const part = original.toUpperCase(); romanParts.push(part); romanMap.push(i); pendingSmallTsu = false; continue;
+ 590:       }
+ 591:       if (/\s/u.test(original)) { romanParts.push(' '); romanMap.push(i); pendingSmallTsu = false; continue; }
+ 592:       errors.push({ index: i, char: original, type: 'unsupported' });
+ 593:       pendingSmallTsu = false;
+ 594:     }
+ 595:     const rawRoman = romanParts.join('');
+ 596:     const roman = rawRoman.replace(/\s+/g, ' ').trim();
+ 597:     const trimmedStart = rawRoman.search(/\S|$/);
+ 598:     const map = romanMap.slice(Math.max(0, trimmedStart), Math.max(0, trimmedStart) + roman.length);
+ 599:     const morseTokens = [];
+ 600:     for (let i = 0; i < roman.length; i++) {
+ 601:       const char = roman[i];
+ 602:       if (char === ' ') { if ((morseTokens[morseTokens.length - 1] || {}).char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
+ 603:       const morseChar = char.toUpperCase();
+ 604:       const code = ALL_MORSE[morseChar];
+ 605:       if (code) morseTokens.push({ char: morseChar, code, sourceIndex: map[i] });
+ 606:       else errors.push({ index: map[i] ?? -1, char, type: 'unsupported' });
+ 607:     }
+ 608:     return { normalized, roman, morseTokens, errors };
+ 609:   }
+ 610:   // Kuromoji の語境界と読みを、既存のかな→ヘボン式変換へ橋渡しする純粋関数。
+ 611:   function convertTokenizedText(input, tokens) {
+ 612:     const normalized = input.normalize('NFKC').replace(/[、。]/g, ' ').replace(/？/g, '?').replace(/！/g, '!');
+ 613:     const pieces = [];
+ 614:     const errors = [];
+ 615:     const sourceIndexes = [];
+ 616:     for (const token of tokens) {
+ 617:       const surface = token.surface_form || '';
+ 618:       const start = Math.max(0, Number(token.word_position || 1) - 1);
+ 619:       let reading = token.reading;
+ 620:       if (token.pos === '助詞' && surface === 'は') reading = 'ワ';
+ 621:       else if (token.pos === '助詞' && surface === 'へ') reading = 'エ';
+ 622:       else if (token.pos === '助詞' && surface === 'を') reading = 'オ';
+ 623:       else if (surface === '良い') reading = 'イイ';
+ 624: 
+ 625:       if (KANJI_PATTERN.test(surface) && !reading) {
+ 626:         [...surface].forEach((char, offset) => errors.push({ index: start + offset, char, type: 'unsupported' }));
+ 627:         continue;
+ 628:       }
+ 629:       const converted = convertText(reading || surface);
+ 630:       converted.errors.forEach(error => errors.push({
+ 631:         ...error,
+ 632:         index: start + Math.min(Math.max(error.index, 0), Math.max(surface.length - 1, 0))
+ 633:       }));
+ 634:       if (!converted.roman) continue;
+ 635:       pieces.push(converted.roman);
+ 636:       for (let i = 0; i < converted.roman.length; i++) sourceIndexes.push(start);
+ 637:       sourceIndexes.push(start);
+ 638:     }
+ 639:     const roman = pieces.join(' ');
+ 640:     const morseTokens = [];
+ 641:     for (let i = 0; i < roman.length; i++) {
+ 642:       const char = roman[i].toUpperCase();
+ 643:       if (char === ' ') {
+ 644:         if ((morseTokens[morseTokens.length - 1] || {}).char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+ 645:         continue;
+ 646:       }
+ 647:       const code = ALL_MORSE[char];
+ 648:       if (code) morseTokens.push({ char, code, sourceIndex: sourceIndexes[i] ?? 0 });
+ 649:     }
+ 650:     return { normalized, roman, morseTokens, errors };
+ 651:   }
+ 652:   function loadTokenizer() {
+ 653:     if (tokenizer) return Promise.resolve(tokenizer);
+ 654:     if (tokenizerPromise) return tokenizerPromise;
+ 655:     tokenizerPromise = new Promise((resolve, reject) => {
+ 825:     return accepted;
+ 826:   }
+ 827: 
+ 828:   async function enableSignalLight() {
+ 829:     if (lightInitializing) return;
+ 830:     lightInitializing = true;
+ 831:     setLightStatus('ライトを確認中…');
+ 832:     let fallbackReason = 'この端末はライト非対応のため画面で点滅します';
+ 833:     try {
+ 834:       if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+ 835:       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+ 836:       if (!document.querySelector('#signal-light').checked) {
+ 837:         stream.getTracks().forEach(item => item.stop());
+ 838:         return;
+ 839:       }
+ 840:       const track = stream.getVideoTracks()[0];
+ 841:       if (track?.getCapabilities?.().torch) {
+ 842:         lightStream = stream;
+ 843:         lightTrack = track;
+ 844:         lightMethod = 'torch';
+ 845:         setLightStatus('ライトで点滅します');
+ 846:         return;
+ 847:       }
+ 848:       stream.getTracks().forEach(item => item.stop());
+ 849:     } catch (error) {
+ 850:       if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+ 851:         fallbackReason = 'カメラの許可が拒否されたため画面で点滅します';
+ 852:       }
+ 853:     } finally {
+ 854:       lightInitializing = false;
+ 855:     }
+ 856:     if (!document.querySelector('#signal-light').checked) return;
+ 857:     if (!confirmScreenFlash()) {
+ 858:       document.querySelector('#signal-light').checked = false;
+ 859:       lightMethod = 'off';
+ 860:       setLightStatus('画面フラッシュをキャンセルしました');
+ 861:       return;
+ 862:     }
+ 863:     lightMethod = 'screen';
+ 864:     setLightStatus(fallbackReason);
+ 865:   }
+ 866: 
+ 867:   async function setSignalLight(on, epoch = lightEpoch) {
+ 868:     if (epoch !== lightEpoch || !document.querySelector('#signal-light').checked) return;
+ 869:     if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 870:       try { await lightTrack.applyConstraints({ advanced: [{ torch: on }] }); } catch (_) {}
+ 871:     } else if (lightMethod === 'screen') {
+ 872:       document.querySelector('#screen-flash').classList.toggle('on', on);
+ 873:     }
+ 874:   }
+ 875: 
+ 876:   function scheduleSignal(startOffset, duration, epoch) {
+ 877:     if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+ 878:     later(() => setSignalLight(true, epoch), startOffset);
+ 879:     later(() => setSignalLight(false, epoch), startOffset + duration);
+ 880:   }
+ 881: 
+ 882:   async function acquireWakeLock(epoch) {
+ 883:     if (!('wakeLock' in navigator)) return;
+ 884:     try {
+ 885:       const lock = await navigator.wakeLock.request('screen');
+ 886:       if (epoch !== lightEpoch) { await lock.release(); return; }
+ 887:       wakeLock = lock;
+ 888:       lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+ 889:     } catch (_) {}
+ 890:   }
+ 891: 
+ 892:   function beginSignalPlayback(epoch) {
+ 893:     if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+ 894:     lightEpoch = epoch;
+ 895:     if (lightMethod === 'screen') document.querySelector('#screen-flash').classList.add('running');
+ 896:     acquireWakeLock(epoch);
+ 897:   }
+ 898: 
+ 899:   function endSignalPlayback(epoch = null) {
+ 900:     if (epoch !== null && epoch !== lightEpoch) return;
+ 901:     lightEpoch++;
+ 902:     if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+ 903:       lightTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+ 904:     }
+ 905:     document.querySelector('#screen-flash').classList.remove('on', 'running');
+ 906:     if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+ 907:   }
+ 908: 
+ 909:   function disableSignalLight(message = 'オフ') {
+ 910:     endSignalPlayback();
+ 911:     if (lightStream) lightStream.getTracks().forEach(track => track.stop());
+ 912:     lightStream = null;
+ 913:     lightTrack = null;
+ 914:     lightMethod = 'off';
+ 915:     setLightStatus(message);
+ 916:   }
+ 917: 
+ 918:   async function audio() {
+ 919:     if (!document.querySelector('#sound-on').checked) return null;
+ 920:     try {
+ 921:       if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+ 922:       if (audioContext.state === 'suspended') await audioContext.resume();
+ 923:       return audioContext;
+ 924:     } catch (_) { return null; }
+ 925:   }
+ 926: 
+ 927:   function stopSound(sound) {
+ 928:     if (!sound || !activeSounds.has(sound)) return;
+ 929:     const now = sound.ctx.currentTime;
+ 930:     try {
+1138:     if (next === 'explore') node(document.querySelector('#explore-letter').textContent)?.classList.add('active');
+1139:     if (next === 'key') document.querySelector('#telegraph-key').focus();
+1140:   }
+1141: 
+1142:   buildPlate();
+1143:   const safeValidate = () => { try { validateModel(); } catch (error) { console.warn('配置チェック:', error.message); } };
+1144:   safeValidate();
+1145:   document.fonts?.ready.then(safeValidate);
+1146:   document.querySelector('#key-prompt').textContent = keyPrompt;
+1147:   node('E').classList.add('active');
+1148: 
+1149:   nodesLayer.addEventListener('click', event => {
+1150:     const target = event.target.closest('.morse-node');
+1151:     if (target) onNodeChoose(target.dataset.letter);
+1152:   });
+1153:   nodesLayer.addEventListener('keydown', event => {
+1154:     const target = event.target.closest('.morse-node');
+1155:     if (target && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onNodeChoose(target.dataset.letter); }
+1156:   });
+1157:   document.querySelector('.tabs').addEventListener('click', event => {
+1158:     const tab = event.target.closest('.tab');
+1159:     if (tab) switchMode(tab.dataset.mode);
+1160:   });
+1161:   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('keydown', event => {
+1162:     if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+1163:     const tabs = [...document.querySelectorAll('.tab')];
+1164:     const delta = event.key === 'ArrowRight' ? 1 : -1;
+1165:     const next = tabs[(tabs.indexOf(tab) + delta + tabs.length) % tabs.length];
+1166:     switchMode(next.dataset.mode); next.focus();
+1167:   }));
+1168: 
+1169:   const keyButton = document.querySelector('#telegraph-key');
+1170:   keyButton.addEventListener('pointerdown', event => { event.preventDefault(); keyButton.setPointerCapture(event.pointerId); beginKey(); });
+1171:   keyButton.addEventListener('pointerup', endKey);
+1172:   keyButton.addEventListener('pointercancel', cancelKeyPress);
+1173:   window.addEventListener('keydown', event => {
+1174:     if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) {
+1175:       event.preventDefault();
+1176:       if (!event.repeat) beginKey();
+1177:     }
+1178:   });
+1179:   window.addEventListener('keyup', event => {
+1180:     if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) { event.preventDefault(); endKey(); }
+1181:   });
+1182: 
+1183:   document.querySelector('#play-quiz').addEventListener('click', () => {
+1184:     if (!quizTarget) quizTarget = chooseWeightedQuestion();
+1185:     document.querySelector('#quiz-mark').textContent = '？？';
+1186:     document.querySelector('#quiz-status').textContent = '再生中。文字を選んでください。';
+1187:     document.querySelector('#quiz-status').className = 'status';
+1188:     document.querySelector('#play-quiz').textContent = 'もう一度聞く';
+1189:     playPath(quizTarget, document.querySelector('#quiz-light').checked);
+1190:   });
+1191:   document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
+1192:   document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+1193:   document.querySelector('#signal-light').addEventListener('change', async event => {
+1194:     if (event.target.checked) await enableSignalLight();
+1195:     else disableSignalLight();
+1196:   });
+1197:   document.querySelector('#screen-flash').addEventListener('pointerdown', () => {
+1198:     clearTimersAndLights();
+1199:     if (mode === 'convert') document.querySelector('#convert-status').textContent = '停止しました';
+1200:   });
+1201:   document.addEventListener('visibilitychange', () => {
+1202:     if (!document.hidden) return;
+1203:     clearTimersAndLights();
+1204:     if (document.querySelector('#signal-light').checked) {
+1205:       document.querySelector('#signal-light').checked = false;
+1206:       disableSignalLight('ページが非表示になったため停止しました');
+1207:     }
+1208:   });
+1209: 
+1210:   document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
+1211:   document.querySelector('#play-convert').addEventListener('click', playConversion);
+1212:   document.querySelector('#stop-convert').addEventListener('click', () => {
+1213:     clearTimersAndLights();
+1214:     document.querySelector('#convert-status').textContent = '停止しました';
+1215:   });
+1216:   document.querySelector('#copy-convert').addEventListener('click', copyConversion);
+1217:   renderConversion();
+1218:   // 読み込み前はかな例文を描画し、その後に新しい漢字入り初期例文を変換する。
+1219:   setTimeout(() => {
+1220:     const input = document.querySelector('#convert-input');
+1221:     input.value = '今日は良い天気';
+1222:     scheduleConversion();
+1223:   }, 0);
+1224:   if (mode === 'explore') node('E').classList.add('active');
+1225: 
+
+web search: 
+web search: site:webkit.org/blog "optional chaining" Safari 13.1 ...
+exec
+"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -Command "Get-Item -LiteralPath .\\index.html | Select-Object Length,LastWriteTime; git diff --numstat -- index.html" in C:\dev\morse-tag
+ succeeded in 852ms:
+
+warning: in the working copy of 'index.html', LF will be replaced by CRLF the next time Git touches it
+15	3	index.html
+Length LastWriteTime       
+------ -------------       
+ 58042 9/15/2026 5:45:39 PM
+
+
+
+codex
+調査時点の最新版では、iOS 15〜18でスクリプト全体をパース停止させる構文はありません。主な「タップ不能」原因候補は画面フラッシュの全画面レイヤーと、`setPointerCapture()` の例外経路です。
+
+1. **重大：画面フラッシュが全画面でタップを奪う**
+
+   [index.html:187](C:/dev/morse-tag/index.html:187)〜192 の `position:fixed; inset:0; z-index:9999` が、画面フラッシュ再生中に [index.html:895](C:/dev/morse-tag/index.html:895) で表示されます。iPhoneでtorch非対応・拒否になると画面フラッシュへフォールバックするため、再生中は全操作がこのレイヤーに当たり、[index.html:1197](C:/dev/morse-tag/index.html:1197) の「停止」だけが実行されます。
+
+   修正案：フラッシュ面を `pointer-events:none` にし、停止は別の常時表示ボタンにする。または操作UIをフラッシュ面より上の `z-index` に置く。
+
+2. **重大：電鍵のタップが `setPointerCapture()` 例外で消える**
+
+   [index.html:1170](C:/dev/morse-tag/index.html:1170) は `setPointerCapture()` の後に `beginKey()` を呼んでいます。Safari側でcaptureが失敗すると `beginKey()` に到達せず、`pointerup` も何もしません。Safari 18.2でもpointer capture関連修正が入っており、特に古いiOSでこの書き方は脆弱です。[WebKit Safari 18.2](https://webkit.org/blog/16301/webkit-features-in-safari-18-2/)
+
+   修正案：先に `beginKey()`、captureは `try { ... } catch {}`。加えて `window.PointerEvent` の有無でpointer系とtouch/mouse系を切り替える。
+
+3. **高：初期化例外なら全イベント登録前に停止する構造**
+
+   [index.html:1142](C:/dev/morse-tag/index.html:1142) の `buildPlate()` は最初の `addEventListener`（1149行）より前です。ここから `Object.fromEntries()`（371、433行）、`replaceAll()`（543行）、SVG構築へ進むため、どれかが例外になると1149〜1216行の全イベントが未登録になり、「全部タップできない」状態になります。ただし、これらは通常のiOS 15では対応済みです。
+
+   修正案：イベント登録を先に行い、描画初期化を独立した `try/catch` にする。必須DOMも起動時に明示検査する。
+
+4. **中：診断エラー表示自身が下部操作を覆う**
+
+   [index.html:317](C:/dev/morse-tag/index.html:317)〜325 のエラー表示は `position:fixed; z-index:99999` で、閉じる操作も `pointer-events:none` もありません。何らかの例外後、下部の変換・設定UIが物理的に押せなくなります。
+
+   修正案：診断表示へ `pointer-events:none` を付けるか、閉じるボタンと最大高さを設ける。
+
+5. **中：カメラ／torchは機能単位で不安定だが全体停止しない**
+
+   [index.html:834](C:/dev/morse-tag/index.html:834)〜870。`getUserMedia` は権限・HTTPS・他タブ利用の影響を受け、torchもSafari 18.4まで修正が続いています。ただし存在確認と `try/catch` があり、失敗時は画面フラッシュへ移るためスクリプト全体は止まりません。[WebKitのカメラ制御](https://webkit.org/blog/7763/a-closer-look-into-webrtc/)、[Safari 18.4のtorch修正](https://webkit.org/blog/16574/webkit-features-in-safari-18-4/)
+
+   修正案：torchを補助機能として扱い、全例外経路で取得済みstreamを停止する。フォールバック時は項目1の全画面タップ遮断も解消する。
+
+6. **中：AudioContext失敗が無表示**
+
+   [index.html:918](C:/dev/morse-tag/index.html:918)〜924。`AudioContext || webkitAudioContext` と `resume()` は適切ですが、失敗をすべて握り潰すため、利用者には「押しても動かない」と見えます。
+
+   修正案：最初の直接タップ内でAudioContextを生成・resumeし、失敗時はステータスに「消音設定／音声開始失敗」を表示する。
+
+7. **低：指定された互換性候補は概ね安全**
+
+   - lookbehind、static block、`structuredClone`：使用なし
+   - `Array.at()`：現在は使用なし。調査途中に外部更新で配列添字へ置換されました。`at()` と `svh` はiOS 15.4からです。[WebKit Safari 15.4](https://webkit.org/blog/12445/new-webkit-features-in-safari-15-4/)
+   - `?.`：567、579、743、834行ほか。iOS 15で対応
+   - `??`：606、644、648行。iOS 15で対応
+   - `replaceAll()`：543〜544行。Safari 13.1から対応。[WebKit Safari 13.1](https://webkit.org/blog/10247/new-webkit-features-in-safari-13-1/)
+   - `wakeLock`：882〜906行。iOS 15では未対応ですが、存在確認・例外処理済み
+   - `48svh`：62行。直前に`48vh`があるためiOS 15.0〜15.3では安全にフォールバック
+   - pointer events：Safari 13から対応。[WebKit Safari 13](https://webkit.org/blog/9674/new-webkit-features-in-safari-13/)
+
+編集はしていません。調査途中で外部から `index.html` に15行追加・3行変更が入り、上記は変更後の行番号です。
+tokens used
+86,080
+調査時点の最新版では、iOS 15〜18でスクリプト全体をパース停止させる構文はありません。主な「タップ不能」原因候補は画面フラッシュの全画面レイヤーと、`setPointerCapture()` の例外経路です。
+
+1. **重大：画面フラッシュが全画面でタップを奪う**
+
+   [index.html:187](C:/dev/morse-tag/index.html:187)〜192 の `position:fixed; inset:0; z-index:9999` が、画面フラッシュ再生中に [index.html:895](C:/dev/morse-tag/index.html:895) で表示されます。iPhoneでtorch非対応・拒否になると画面フラッシュへフォールバックするため、再生中は全操作がこのレイヤーに当たり、[index.html:1197](C:/dev/morse-tag/index.html:1197) の「停止」だけが実行されます。
+
+   修正案：フラッシュ面を `pointer-events:none` にし、停止は別の常時表示ボタンにする。または操作UIをフラッシュ面より上の `z-index` に置く。
+
+2. **重大：電鍵のタップが `setPointerCapture()` 例外で消える**
+
+   [index.html:1170](C:/dev/morse-tag/index.html:1170) は `setPointerCapture()` の後に `beginKey()` を呼んでいます。Safari側でcaptureが失敗すると `beginKey()` に到達せず、`pointerup` も何もしません。Safari 18.2でもpointer capture関連修正が入っており、特に古いiOSでこの書き方は脆弱です。[WebKit Safari 18.2](https://webkit.org/blog/16301/webkit-features-in-safari-18-2/)
+
+   修正案：先に `beginKey()`、captureは `try { ... } catch {}`。加えて `window.PointerEvent` の有無でpointer系とtouch/mouse系を切り替える。
+
+3. **高：初期化例外なら全イベント登録前に停止する構造**
+
+   [index.html:1142](C:/dev/morse-tag/index.html:1142) の `buildPlate()` は最初の `addEventListener`（1149行）より前です。ここから `Object.fromEntries()`（371、433行）、`replaceAll()`（543行）、SVG構築へ進むため、どれかが例外になると1149〜1216行の全イベントが未登録になり、「全部タップできない」状態になります。ただし、これらは通常のiOS 15では対応済みです。
+
+   修正案：イベント登録を先に行い、描画初期化を独立した `try/catch` にする。必須DOMも起動時に明示検査する。
+
+4. **中：診断エラー表示自身が下部操作を覆う**
+
+   [index.html:317](C:/dev/morse-tag/index.html:317)〜325 のエラー表示は `position:fixed; z-index:99999` で、閉じる操作も `pointer-events:none` もありません。何らかの例外後、下部の変換・設定UIが物理的に押せなくなります。
+
+   修正案：診断表示へ `pointer-events:none` を付けるか、閉じるボタンと最大高さを設ける。
+
+5. **中：カメラ／torchは機能単位で不安定だが全体停止しない**
+
+   [index.html:834](C:/dev/morse-tag/index.html:834)〜870。`getUserMedia` は権限・HTTPS・他タブ利用の影響を受け、torchもSafari 18.4まで修正が続いています。ただし存在確認と `try/catch` があり、失敗時は画面フラッシュへ移るためスクリプト全体は止まりません。[WebKitのカメラ制御](https://webkit.org/blog/7763/a-closer-look-into-webrtc/)、[Safari 18.4のtorch修正](https://webkit.org/blog/16574/webkit-features-in-safari-18-4/)
+
+   修正案：torchを補助機能として扱い、全例外経路で取得済みstreamを停止する。フォールバック時は項目1の全画面タップ遮断も解消する。
+
+6. **中：AudioContext失敗が無表示**
+
+   [index.html:918](C:/dev/morse-tag/index.html:918)〜924。`AudioContext || webkitAudioContext` と `resume()` は適切ですが、失敗をすべて握り潰すため、利用者には「押しても動かない」と見えます。
+
+   修正案：最初の直接タップ内でAudioContextを生成・resumeし、失敗時はステータスに「消音設定／音声開始失敗」を表示する。
+
+7. **低：指定された互換性候補は概ね安全**
+
+   - lookbehind、static block、`structuredClone`：使用なし
+   - `Array.at()`：現在は使用なし。調査途中に外部更新で配列添字へ置換されました。`at()` と `svh` はiOS 15.4からです。[WebKit Safari 15.4](https://webkit.org/blog/12445/new-webkit-features-in-safari-15-4/)
+   - `?.`：567、579、743、834行ほか。iOS 15で対応
+   - `??`：606、644、648行。iOS 15で対応
+   - `replaceAll()`：543〜544行。Safari 13.1から対応。[WebKit Safari 13.1](https://webkit.org/blog/10247/new-webkit-features-in-safari-13-1/)
+   - `wakeLock`：882〜906行。iOS 15では未対応ですが、存在確認・例外処理済み
+   - `48svh`：62行。直前に`48vh`があるためiOS 15.0〜15.3では安全にフォールバック
+   - pointer events：Safari 13から対応。[WebKit Safari 13](https://webkit.org/blog/9674/new-webkit-features-in-safari-13/)
+
+編集はしていません。調査途中で外部から `index.html` に15行追加・3行変更が入り、上記は変更後の行番号です。
