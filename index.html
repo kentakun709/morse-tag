@@ -1282,7 +1282,7 @@ window.addEventListener('unhandledrejection', function (e) { window.showFatalErr
     setTimeout(() => {
       try {
         const input = document.querySelector('#convert-input');
-        input.value = '今日は良い天気';
+        input.value = 'こんにちは';
         scheduleConversion();
       } catch (error) { reportStartupError('変換初期化', error); }
     }, 0);
