@@ -31,7 +31,7 @@
     color: var(--silk);
     font-family: "Noto Sans JP", system-ui, sans-serif;
   }
-  button, input { font: inherit; }
+  button, input, textarea { font: inherit; }
   button { color: inherit; }
   button:focus-visible, input:focus-visible {
     outline: 3px solid var(--led-on);
@@ -82,7 +82,7 @@
   .node-hit { fill: transparent; stroke: none; }
   .tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 6px;
     padding: 5px;
     margin-top: 14px;
@@ -152,6 +152,24 @@
   .status.bad { color: var(--error); }
   .stats { margin-top: 14px; padding-top: 12px; border-top: 1px solid #293141; font-size: .8rem; }
   .stats strong { font-family: "IBM Plex Mono", monospace; color: var(--silk); }
+  .convert-input {
+    width: 100%; min-height: 86px; resize: vertical; padding: 10px 12px;
+    border: 1px solid #596475; border-radius: 10px; background: #0b1018;
+    color: var(--silk); line-height: 1.6;
+  }
+  .convert-preview, .convert-output {
+    min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap;
+    font-family: "IBM Plex Mono", monospace; line-height: 1.7;
+  }
+  .convert-preview { min-height: 1.7em; margin: 6px 0 10px; color: #aeb6c1; }
+  .convert-output { min-height: 1.7em; margin: 2px 0 10px; color: var(--led-on); }
+  .convert-roman { margin: 2px 0 8px; overflow-wrap: anywhere; color: var(--silk); font-family: "IBM Plex Mono", monospace; }
+  .convert-error { color: var(--error); text-decoration: underline; text-decoration-thickness: 2px; }
+  .convert-active { color: #0A0D13; background: var(--led-on); border-radius: 3px; }
+  .convert-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .convert-actions .action { flex: 0 1 auto; }
+  .notation-toggle { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; font-size: .78rem; }
+  .notation-toggle input { width: 19px; height: 19px; accent-color: var(--led-on); }
   details {
     margin-top: 10px;
     border: 1px solid #293141;
@@ -185,6 +203,7 @@
     .key { min-height: 58px; margin-top: 6px; }
     .instruction { line-height: 1.4; }
     .status { margin-top: 6px; }
+    .convert-actions .action { flex: 1 1 82px; padding-inline: 10px; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
@@ -227,6 +246,7 @@
     <button class="tab" id="tab-explore" role="tab" aria-selected="true" aria-controls="panel-explore" data-mode="explore">さわる</button>
     <button class="tab" id="tab-key" role="tab" aria-selected="false" aria-controls="panel-key" data-mode="key">打つ</button>
     <button class="tab" id="tab-quiz" role="tab" aria-selected="false" aria-controls="panel-quiz" data-mode="quiz">聞く</button>
+    <button class="tab" id="tab-convert" role="tab" aria-selected="false" aria-controls="panel-convert" data-mode="convert">変換</button>
   </nav>
 
   <section class="panel" id="panel-explore" role="tabpanel" aria-labelledby="tab-explore">
@@ -254,6 +274,23 @@
     <div class="stats"><span>正答率 <strong id="accuracy">—</strong></span><span>連続正解 <strong id="streak">0</strong></span></div>
   </section>
 
+  <section class="panel" id="panel-convert" role="tabpanel" aria-labelledby="tab-convert" hidden>
+    <label class="eyebrow" for="convert-input">テキスト</label>
+    <textarea class="convert-input" id="convert-input" rows="3">こんにちは</textarea>
+    <div class="convert-preview" id="convert-preview" aria-label="入力内容"></div>
+    <p class="eyebrow">ローマ字</p>
+    <p class="convert-roman" id="convert-roman"></p>
+    <p class="eyebrow">モールス</p>
+    <div class="convert-output" id="convert-output"></div>
+    <div class="convert-actions">
+      <button class="action" id="play-convert" type="button">再生</button>
+      <button class="action" id="stop-convert" type="button" disabled>停止</button>
+      <button class="action" id="copy-convert" type="button">コピー</button>
+      <label class="notation-toggle"><input id="ascii-notation" type="checkbox">.- 表記</label>
+    </div>
+    <p class="status" id="convert-status" aria-live="polite"></p>
+  </section>
+
   <details>
     <summary>音と練習の設定</summary>
     <div class="settings">
@@ -275,6 +312,30 @@
     H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--', N: '-.',
     O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-',
     V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..'
+  });
+  const MORSE_EXTRA = Object.freeze({
+    0:'-----', 1:'.----', 2:'..---', 3:'...--', 4:'....-', 5:'.....', 6:'-....', 7:'--...', 8:'---..', 9:'----.',
+    '.':'.-.-.-', ',':'--..--', '?':'..--..', '!':'-.-.--', '/':'-..-.', '(':'-.--.', ')':'-.--.-',
+    '&':'.-...', ':':'---...', ';':'-.-.-.', '=':'-...-', '+':'.-.-.', '-':'-....-', '_':'..--.-', '"':'.-..-.', "'":'.----.', '@':'.--.-.'
+  });
+  const ALL_MORSE = Object.freeze({ ...MORSE, ...MORSE_EXTRA });
+  const KANA = Object.freeze({
+    'あ':'a','い':'i','う':'u','え':'e','お':'o', 'か':'ka','き':'ki','く':'ku','け':'ke','こ':'ko',
+    'さ':'sa','し':'shi','す':'su','せ':'se','そ':'so', 'た':'ta','ち':'chi','つ':'tsu','て':'te','と':'to',
+    'な':'na','に':'ni','ぬ':'nu','ね':'ne','の':'no', 'は':'ha','ひ':'hi','ふ':'fu','へ':'he','ほ':'ho',
+    'ま':'ma','み':'mi','む':'mu','め':'me','も':'mo', 'や':'ya','ゆ':'yu','よ':'yo',
+    'ら':'ra','り':'ri','る':'ru','れ':'re','ろ':'ro', 'わ':'wa','を':'o','ん':'n',
+    'が':'ga','ぎ':'gi','ぐ':'gu','げ':'ge','ご':'go', 'ざ':'za','じ':'ji','ず':'zu','ぜ':'ze','ぞ':'zo',
+    'だ':'da','ぢ':'ji','づ':'zu','で':'de','ど':'do', 'ば':'ba','び':'bi','ぶ':'bu','べ':'be','ぼ':'bo',
+    'ぱ':'pa','ぴ':'pi','ぷ':'pu','ぺ':'pe','ぽ':'po', 'ゔ':'vu',
+    'きゃ':'kya','きゅ':'kyu','きょ':'kyo','しゃ':'sha','しゅ':'shu','しょ':'sho','ちゃ':'cha','ちゅ':'chu','ちょ':'cho',
+    'にゃ':'nya','にゅ':'nyu','にょ':'nyo','ひゃ':'hya','ひゅ':'hyu','ひょ':'hyo','みゃ':'mya','みゅ':'myu','みょ':'myo',
+    'りゃ':'rya','りゅ':'ryu','りょ':'ryo','ぎゃ':'gya','ぎゅ':'gyu','ぎょ':'gyo','じゃ':'ja','じゅ':'ju','じょ':'jo',
+    'ぢゃ':'ja','ぢゅ':'ju','ぢょ':'jo','びゃ':'bya','びゅ':'byu','びょ':'byo','ぴゃ':'pya','ぴゅ':'pyu','ぴょ':'pyo',
+    'しぇ':'she','じぇ':'je','ちぇ':'che','ふぁ':'fa','ふぃ':'fi','ふぇ':'fe','ふぉ':'fo','てぃ':'ti','でぃ':'di',
+    'とぅ':'tu','どぅ':'du','うぃ':'wi','うぇ':'we','うぉ':'wo','くぁ':'kwa','くぃ':'kwi','くぇ':'kwe','くぉ':'kwo',
+    'ぐぁ':'gwa','ぐぃ':'gwi','ぐぇ':'gwe','ぐぉ':'gwo','つぁ':'tsa','つぃ':'tsi','つぇ':'tse','つぉ':'tso',
+    'ゔぁ':'va','ゔぃ':'vi','ゔぇ':'ve','ゔぉ':'vo'
   });
 
   // 写真のレイアウト座標。path は上の符号表と起動時に照合する。
@@ -305,6 +366,7 @@
   let quizTotal = 0;
   let quizCorrect = 0;
   let streak = 0;
+  let conversion = null;
 
   let progress = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, { correct: 0, wrong: 0 }]));
   try {
@@ -441,6 +503,159 @@
 
   function spokenCode(code) { return code.replaceAll('.', '短点、').replaceAll('-', '長音、').replace(/、$/, ''); }
   function displayCode(code) { return code.replaceAll('.', '・').replaceAll('-', '－'); }
+  function toHiragana(char) {
+    const code = char.codePointAt(0);
+    return code >= 0x30A1 && code <= 0x30F6 ? String.fromCodePoint(code - 0x60) : char;
+  }
+  // DOM や設定値に依存しない純粋な変換関数。
+  function convertText(input) {
+    const normalized = input.normalize('NFKC').replace(/[、。]/g, ' ').replace(/？/g, '?').replace(/！/g, '!');
+    const chars = [...normalized];
+    const romanParts = [];
+    const errors = [];
+    const romanMap = [];
+    let pendingSmallTsu = false;
+    for (let i = 0; i < chars.length; i++) {
+      const original = chars[i];
+      const hira = toHiragana(original);
+      if (/^[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff々〆〇]$/u.test(original)) {
+        errors.push({ index: i, char: original, type: 'kanji' });
+        continue;
+      }
+      if (hira === 'っ') { pendingSmallTsu = true; continue; }
+      if (hira === 'ー') {
+        const soFar = romanParts.join('');
+        const vowel = soFar.match(/[aeiou](?=[^aeiou]*$)/i)?.[0];
+        if (vowel) { romanParts.push(vowel); romanMap.push(i); }
+        else errors.push({ index: i, char: original, type: 'unsupported' });
+        continue;
+      }
+      const pair = i + 1 < chars.length ? hira + toHiragana(chars[i + 1]) : '';
+      let syllable = KANA[pair];
+      let consumed = 1;
+      if (syllable) consumed = 2;
+      else syllable = KANA[hira];
+      if (syllable) {
+        if (pendingSmallTsu) {
+          const doubled = syllable.startsWith('ch') ? 't' : (syllable.match(/^[bcdfghjklmnpqrstvwxyz]/)?.[0] || '');
+          if (doubled) { romanParts.push(doubled); romanMap.push(i); }
+          pendingSmallTsu = false;
+        }
+        romanParts.push(syllable);
+        for (let j = 0; j < syllable.length; j++) romanMap.push(i);
+        if (consumed === 2) i++;
+        continue;
+      }
+      if (/^[A-Za-z0-9.,?!/()&:;=+_"'@\-]$/.test(original)) {
+        const part = original.toUpperCase(); romanParts.push(part); romanMap.push(i); pendingSmallTsu = false; continue;
+      }
+      if (/\s/u.test(original)) { romanParts.push(' '); romanMap.push(i); pendingSmallTsu = false; continue; }
+      errors.push({ index: i, char: original, type: 'unsupported' });
+      pendingSmallTsu = false;
+    }
+    const rawRoman = romanParts.join('');
+    const roman = rawRoman.replace(/\s+/g, ' ').trim();
+    const trimmedStart = rawRoman.search(/\S|$/);
+    const map = romanMap.slice(Math.max(0, trimmedStart), Math.max(0, trimmedStart) + roman.length);
+    const morseTokens = [];
+    for (let i = 0; i < roman.length; i++) {
+      const char = roman[i];
+      if (char === ' ') { if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
+      const code = ALL_MORSE[char];
+      if (code) morseTokens.push({ char, code, sourceIndex: map[i] });
+      else errors.push({ index: map[i] ?? -1, char, type: 'unsupported' });
+    }
+    return { normalized, roman, morseTokens, errors };
+  }
+  function morseString(result, ascii = false) {
+    return result.morseTokens.map(token => token.char === ' ' ? '/' : (ascii ? token.code : displayCode(token.code))).join(' ');
+  }
+  function clearConvertHighlights() {
+    document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+    const play = document.querySelector('#play-convert');
+    const stop = document.querySelector('#stop-convert');
+    if (play) play.disabled = false;
+    if (stop) stop.disabled = true;
+  }
+  function renderConversion() {
+    clearTimersAndLights();
+    conversion = convertText(document.querySelector('#convert-input').value);
+    const errorIndexes = new Set(conversion.errors.map(error => error.index));
+    const preview = document.querySelector('#convert-preview');
+    preview.replaceChildren(...[...conversion.normalized].map((char, index) => {
+      const span = document.createElement('span');
+      span.textContent = char;
+      span.dataset.sourceIndex = index;
+      if (errorIndexes.has(index)) span.classList.add('convert-error');
+      return span;
+    }));
+    document.querySelector('#convert-roman').textContent = conversion.roman || '—';
+    const output = document.querySelector('#convert-output');
+    output.replaceChildren(...conversion.morseTokens.flatMap((token, index) => {
+      const span = document.createElement('span');
+      span.textContent = token.char === ' ' ? '/' : displayCode(token.code);
+      span.dataset.tokenIndex = index;
+      return [span, document.createTextNode(index === conversion.morseTokens.length - 1 ? '' : ' ')];
+    }));
+    const kanji = conversion.errors.some(error => error.type === 'kanji');
+    const unsupported = conversion.errors.some(error => error.type === 'unsupported');
+    const status = document.querySelector('#convert-status');
+    status.textContent = kanji ? '漢字はひらがなで入力してください' : unsupported ? '赤い文字は未対応のためスキップしました' : '';
+    status.className = `status ${kanji || unsupported ? 'bad' : ''}`;
+  }
+  function highlightConversion(tokenIndex) {
+    document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
+    const token = conversion?.morseTokens[tokenIndex];
+    if (!token) return;
+    document.querySelector(`#convert-preview [data-source-index="${token.sourceIndex}"]`)?.classList.add('convert-active');
+    document.querySelector(`#convert-output [data-token-index="${tokenIndex}"]`)?.classList.add('convert-active');
+  }
+  function playConversion() {
+    clearTimersAndLights();
+    if (!conversion?.morseTokens.some(token => token.char !== ' ')) return;
+    document.querySelector('#play-convert').disabled = true;
+    document.querySelector('#stop-convert').disabled = false;
+    document.querySelector('#convert-status').textContent = '再生中';
+    document.querySelector('#convert-status').className = 'status';
+    const epoch = audioEpoch;
+    const unit = unitMs();
+    let cursor = 0;
+    conversion.morseTokens.forEach((token, tokenIndex) => {
+      if (token.char === ' ') { cursor += unit * 7; return; }
+      later(() => {
+        document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+        highlightConversion(tokenIndex);
+      }, cursor);
+      [...token.code].forEach((mark, markIndex) => {
+        const duration = mark === '.' ? unit : unit * 3;
+        const stepLetter = /^[A-Z]$/.test(token.char) ? reverse[token.code.slice(0, markIndex + 1)] : null;
+        if (stepLetter) later(() => node(stepLetter)?.classList.add('active'), cursor);
+        tone(cursor, duration, epoch);
+        cursor += duration;
+        if (stepLetter) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+        cursor += unit;
+      });
+      cursor += unit * 2;
+    });
+    later(() => {
+      clearConvertHighlights();
+      document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+      document.querySelector('#convert-status').textContent = '再生しました';
+    }, cursor);
+  }
+  async function copyConversion() {
+    const text = morseString(conversion, document.querySelector('#ascii-notation').checked);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_) {
+      const helper = document.createElement('textarea');
+      helper.value = text; helper.style.position = 'fixed'; helper.style.opacity = '0';
+      document.body.append(helper); helper.select(); document.execCommand('copy'); helper.remove();
+    }
+    document.querySelector('#convert-status').textContent = 'コピーしました';
+    document.querySelector('#convert-status').className = 'status good';
+  }
   function unitMs() { return 1200 / Number(document.querySelector('#wpm').value); }
   function randomLetter() { return String.fromCharCode(65 + Math.floor(Math.random() * 26)); }
   function node(letter) { return document.querySelector(`#node-${letter}`); }
@@ -451,6 +666,7 @@
     audioEpoch++;
     stopAllAudio();
     document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+    clearConvertHighlights();
   }
 
   function later(fn, delay) {
@@ -731,6 +947,23 @@
   });
   document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
   document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+
+  document.querySelector('#convert-input').addEventListener('input', renderConversion);
+  document.querySelector('#play-convert').addEventListener('click', playConversion);
+  document.querySelector('#stop-convert').addEventListener('click', () => {
+    clearTimersAndLights();
+    document.querySelector('#convert-status').textContent = '停止しました';
+  });
+  document.querySelector('#copy-convert').addEventListener('click', copyConversion);
+  renderConversion();
+  if (mode === 'explore') node('E').classList.add('active');
+
+  // 追加仕様に記載された変換の自己テスト。
+  console.assert(convertText('こんにちは').roman.toUpperCase() === 'KONNICHIHA', 'こんにちは → KONNICHIHA');
+  console.assert(convertText('キャッチ').roman.toUpperCase() === 'KYATCHI', 'キャッチ → KYATCHI');
+  console.assert(convertText('ラーメン').roman.toUpperCase() === 'RAAMEN', 'ラーメン → RAAMEN');
+  console.assert(morseString(convertText('SOS'), true) === '... --- ...', 'SOS → ... --- ...');
+  console.assert(convertText('東京').errors.every(error => error.type === 'kanji') && convertText('東京').errors.length === 2, '東京 → 漢字エラー');
 })();
 </script>
 
