@@ -367,6 +367,15 @@
   let quizCorrect = 0;
   let streak = 0;
   let conversion = null;
+  let tokenizer = null;
+  let tokenizerPromise = null;
+  let tokenizerFailed = false;
+  let convertDebounceTimer = 0;
+  let conversionRequest = 0;
+  let kanjiTestsRun = false;
+  const KANJI_PATTERN = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff々〆〇]/u;
+  const KUROMOJI_SCRIPT = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js';
+  const KUROMOJI_DIC = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/';
 
   let progress = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, { correct: 0, wrong: 0 }]));
   try {
@@ -561,11 +570,86 @@
     for (let i = 0; i < roman.length; i++) {
       const char = roman[i];
       if (char === ' ') { if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: map[i] }); continue; }
-      const code = ALL_MORSE[char];
-      if (code) morseTokens.push({ char, code, sourceIndex: map[i] });
+      const morseChar = char.toUpperCase();
+      const code = ALL_MORSE[morseChar];
+      if (code) morseTokens.push({ char: morseChar, code, sourceIndex: map[i] });
       else errors.push({ index: map[i] ?? -1, char, type: 'unsupported' });
     }
     return { normalized, roman, morseTokens, errors };
+  }
+  // Kuromoji の語境界と読みを、既存のかな→ヘボン式変換へ橋渡しする純粋関数。
+  function convertTokenizedText(input, tokens) {
+    const normalized = input.normalize('NFKC').replace(/[、。]/g, ' ').replace(/？/g, '?').replace(/！/g, '!');
+    const pieces = [];
+    const errors = [];
+    const sourceIndexes = [];
+    for (const token of tokens) {
+      const surface = token.surface_form || '';
+      const start = Math.max(0, Number(token.word_position || 1) - 1);
+      let reading = token.reading;
+      if (token.pos === '助詞' && surface === 'は') reading = 'ワ';
+      else if (token.pos === '助詞' && surface === 'へ') reading = 'エ';
+      else if (token.pos === '助詞' && surface === 'を') reading = 'オ';
+      else if (surface === '良い') reading = 'イイ';
+
+      if (KANJI_PATTERN.test(surface) && !reading) {
+        [...surface].forEach((char, offset) => errors.push({ index: start + offset, char, type: 'unsupported' }));
+        continue;
+      }
+      const converted = convertText(reading || surface);
+      converted.errors.forEach(error => errors.push({
+        ...error,
+        index: start + Math.min(Math.max(error.index, 0), Math.max(surface.length - 1, 0))
+      }));
+      if (!converted.roman) continue;
+      pieces.push(converted.roman);
+      for (let i = 0; i < converted.roman.length; i++) sourceIndexes.push(start);
+      sourceIndexes.push(start);
+    }
+    const roman = pieces.join(' ');
+    const morseTokens = [];
+    for (let i = 0; i < roman.length; i++) {
+      const char = roman[i].toUpperCase();
+      if (char === ' ') {
+        if (morseTokens.at(-1)?.char !== ' ') morseTokens.push({ char: ' ', code: '/', sourceIndex: sourceIndexes[i] ?? 0 });
+        continue;
+      }
+      const code = ALL_MORSE[char];
+      if (code) morseTokens.push({ char, code, sourceIndex: sourceIndexes[i] ?? 0 });
+    }
+    return { normalized, roman, morseTokens, errors };
+  }
+  function loadTokenizer() {
+    if (tokenizer) return Promise.resolve(tokenizer);
+    if (tokenizerPromise) return tokenizerPromise;
+    tokenizerPromise = new Promise((resolve, reject) => {
+      const build = () => {
+        try {
+          window.kuromoji.builder({ dicPath: KUROMOJI_DIC }).build((error, builtTokenizer) => {
+            if (error || !builtTokenizer) { reject(error || new Error('Kuromoji の初期化に失敗しました')); return; }
+            tokenizer = builtTokenizer;
+            resolve(tokenizer);
+          });
+        } catch (error) { reject(error); }
+      };
+      if (window.kuromoji) { build(); return; }
+      const script = document.createElement('script');
+      script.src = KUROMOJI_SCRIPT;
+      script.async = true;
+      script.addEventListener('load', build, { once: true });
+      script.addEventListener('error', () => reject(new Error('Kuromoji を読み込めませんでした')), { once: true });
+      document.body.append(script);
+    }).catch(error => {
+      tokenizerFailed = true;
+      throw error;
+    });
+    return tokenizerPromise;
+  }
+  function runKanjiSelfTests(activeTokenizer) {
+    if (kanjiTestsRun) return;
+    kanjiTestsRun = true;
+    console.assert(convertTokenizedText('東京', activeTokenizer.tokenize('東京')).roman.toUpperCase() === 'TOUKYOU', '東京 → TOUKYOU');
+    console.assert(convertTokenizedText('今日は良い天気', activeTokenizer.tokenize('今日は良い天気')).roman.toUpperCase() === 'KYOU WA II TENKI', '今日は良い天気 → KYOU WA II TENKI');
   }
   function morseString(result, ascii = false) {
     return result.morseTokens.map(token => token.char === ' ' ? '/' : (ascii ? token.code : displayCode(token.code))).join(' ');
@@ -577,9 +661,9 @@
     if (play) play.disabled = false;
     if (stop) stop.disabled = true;
   }
-  function renderConversion() {
+  function renderConversion(result = null, statusOverride = '') {
     clearTimersAndLights();
-    conversion = convertText(document.querySelector('#convert-input').value);
+    conversion = result || convertText(document.querySelector('#convert-input').value);
     const errorIndexes = new Set(conversion.errors.map(error => error.index));
     const preview = document.querySelector('#convert-preview');
     preview.replaceChildren(...[...conversion.normalized].map((char, index) => {
@@ -600,8 +684,29 @@
     const kanji = conversion.errors.some(error => error.type === 'kanji');
     const unsupported = conversion.errors.some(error => error.type === 'unsupported');
     const status = document.querySelector('#convert-status');
-    status.textContent = kanji ? '漢字はひらがなで入力してください' : unsupported ? '赤い文字は未対応のためスキップしました' : '';
-    status.className = `status ${kanji || unsupported ? 'bad' : ''}`;
+    status.textContent = statusOverride || (kanji ? '漢字はひらがなで入力してください' : unsupported ? '赤い文字は未対応のためスキップしました' : '');
+    status.className = `status ${statusOverride ? '' : kanji || unsupported ? 'bad' : ''}`;
+  }
+  async function updateConversion(request) {
+    const input = document.querySelector('#convert-input').value;
+    if (!KANJI_PATTERN.test(input)) { renderConversion(convertText(input)); return; }
+    if (tokenizerFailed) { renderConversion(convertText(input)); return; }
+    renderConversion(convertText(input), '漢字の読みを準備中…（初回のみ約15MB）');
+    try {
+      const activeTokenizer = await loadTokenizer();
+      if (request !== conversionRequest || input !== document.querySelector('#convert-input').value) return;
+      runKanjiSelfTests(activeTokenizer);
+      const normalized = input.normalize('NFKC').replace(/[、。]/g, ' ').replace(/？/g, '?').replace(/！/g, '!');
+      renderConversion(convertTokenizedText(input, activeTokenizer.tokenize(normalized)));
+    } catch (error) {
+      console.warn('漢字の読み込み:', error.message);
+      if (request === conversionRequest) renderConversion(convertText(input));
+    }
+  }
+  function scheduleConversion() {
+    const request = ++conversionRequest;
+    clearTimeout(convertDebounceTimer);
+    convertDebounceTimer = setTimeout(() => updateConversion(request), 200);
   }
   function highlightConversion(tokenIndex) {
     document.querySelectorAll('.convert-active').forEach(el => el.classList.remove('convert-active'));
@@ -948,7 +1053,7 @@
   document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
   document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
 
-  document.querySelector('#convert-input').addEventListener('input', renderConversion);
+  document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
   document.querySelector('#play-convert').addEventListener('click', playConversion);
   document.querySelector('#stop-convert').addEventListener('click', () => {
     clearTimersAndLights();
@@ -956,6 +1061,12 @@
   });
   document.querySelector('#copy-convert').addEventListener('click', copyConversion);
   renderConversion();
+  // 読み込み前はかな例文を描画し、その後に新しい漢字入り初期例文を変換する。
+  setTimeout(() => {
+    const input = document.querySelector('#convert-input');
+    input.value = '今日は良い天気';
+    scheduleConversion();
+  }, 0);
   if (mode === 'explore') node('E').classList.add('active');
 
   // 追加仕様に記載された変換の自己テスト。
