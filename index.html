@@ -59,7 +59,7 @@
   }
   .tagline { margin: 0; color: var(--edge); font-size: .7rem; letter-spacing: .08em; }
   .plate-wrap { position: relative; width: 100%; min-width: 0; }
-  #plate { display: block; width: 100%; max-width: 100%; height: auto; max-height: 48vh; max-height: 48svh; margin: 0 auto; filter: drop-shadow(0 18px 24px #0009); }
+  #plate { display: block; width: 100%; max-width: 100%; height: auto; max-height: 48vh; max-height: 48svh; margin: 0 auto; }
   .plate-edge { fill: var(--plate); stroke: var(--edge); stroke-width: 3; }
   .plate-inner { fill: none; stroke: #323b4d; stroke-width: 1; }
   .plate-title { fill: var(--silk); font: 600 25px "Saira Semi Condensed", sans-serif; letter-spacing: 5px; }
@@ -69,15 +69,15 @@
   .hanger-rim { fill: #080b11; stroke: var(--edge); stroke-width: 4; }
   .hanger-hole { fill: var(--ground); stroke: #4a5361; stroke-width: 2; }
   .morse-node { cursor: pointer; }
-  .morse-node .lamp { fill: var(--led-off); stroke: #617068; stroke-width: 1.4; transition: fill .14s, filter .14s, stroke .14s; }
+  .morse-node .lamp { fill: var(--led-off); stroke: #617068; stroke-width: 1.4; transition: fill .14s, stroke .14s; }
   .morse-node .node-label { fill: var(--silk); font: 600 18px "Saira Semi Condensed", sans-serif; pointer-events: none; }
   .morse-node:hover .lamp, .morse-node:focus .lamp { stroke: var(--silk); }
   .morse-node.active .lamp {
     fill: var(--led-on);
     stroke: #baffc6;
-    filter: url(#greenGlow);
+    stroke-width: 3;
   }
-  .morse-node.error .lamp { fill: var(--error); stroke: #ffc0c0; filter: url(#redGlow); }
+  .morse-node.error .lamp { fill: var(--error); stroke: #ffc0c0; stroke-width: 3; }
   .morse-node:focus-visible .lamp { stroke: var(--silk); stroke-width: 3; }
   .node-hit { fill: transparent; stroke: none; }
   .tabs {
@@ -249,14 +249,6 @@
     <svg id="plate" viewBox="0 0 520 760" role="img" aria-labelledby="plate-name plate-desc">
       <title id="plate-name">モールス符号の二分木プレート</title>
       <desc id="plate-desc">左に長音で始まる文字、右に短点で始まる文字を配置した練習用プレート</desc>
-      <defs>
-        <filter id="greenGlow" x="-200%" y="-200%" width="500%" height="500%">
-          <feGaussianBlur stdDeviation="6" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        <filter id="redGlow" x="-200%" y="-200%" width="500%" height="500%">
-          <feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
       <rect class="plate-edge" x="6" y="6" width="508" height="748" rx="34"/>
       <rect class="plate-inner" x="14" y="14" width="492" height="732" rx="27"/>
       <circle class="hanger-rim" cx="469" cy="52" r="23"/><circle class="hanger-hole" cx="469" cy="52" r="11"/>
@@ -306,13 +298,14 @@
 
   <section class="panel" id="panel-convert" role="tabpanel" aria-labelledby="tab-convert" hidden>
     <label class="eyebrow" for="convert-input">テキスト</label>
-    <textarea class="convert-input" id="convert-input" rows="3">こんにちは</textarea>
+    <textarea class="convert-input" id="convert-input" rows="3" maxlength="200">こんにちは</textarea>
     <div class="convert-preview" id="convert-preview" aria-label="入力内容"></div>
     <p class="eyebrow">ローマ字</p>
     <p class="convert-roman" id="convert-roman"></p>
     <p class="eyebrow">モールス</p>
     <div class="convert-output" id="convert-output"></div>
     <div class="convert-actions">
+      <button class="action" id="read-kanji" type="button" hidden>漢字を読む（辞書 約6MB・初回は時間がかかります）</button>
       <button class="action" id="play-convert" type="button">再生</button>
       <button class="action" id="stop-convert" type="button" disabled>停止</button>
       <button class="action" id="copy-convert" type="button">コピー</button>
@@ -718,9 +711,19 @@ window.addEventListener('unhandledrejection', function (e) { window.showFatalErr
     if (play) play.disabled = false;
     if (stop) stop.disabled = true;
   }
+  function limitedConversionInput() {
+    const value = document.querySelector('#convert-input').value;
+    const characters = [...value];
+    return { text: characters.slice(0, 200).join(''), truncated: characters.length > 200 };
+  }
+  function updateKanjiButton(input) {
+    const button = document.querySelector('#read-kanji');
+    button.hidden = !KANJI_PATTERN.test(input) || Boolean(tokenizer);
+  }
   function renderConversion(result = null, statusOverride = '') {
     clearTimersAndLights();
-    conversion = result || convertText(document.querySelector('#convert-input').value);
+    const limited = limitedConversionInput();
+    conversion = result || convertText(limited.text);
     const errorIndexes = new Set(conversion.errors.map(error => error.index));
     const preview = document.querySelector('#convert-preview');
     preview.replaceChildren(...[...conversion.normalized].map((char, index) => {
@@ -741,23 +744,35 @@ window.addEventListener('unhandledrejection', function (e) { window.showFatalErr
     const kanji = conversion.errors.some(error => error.type === 'kanji');
     const unsupported = conversion.errors.some(error => error.type === 'unsupported');
     const status = document.querySelector('#convert-status');
-    status.textContent = statusOverride || (kanji ? '漢字はひらがなで入力してください' : unsupported ? '赤い文字は未対応のためスキップしました' : '');
-    status.className = `status ${statusOverride ? '' : kanji || unsupported ? 'bad' : ''}`;
+    status.textContent = limited.truncated ? '200文字までです' : statusOverride || (kanji ? '漢字はひらがなで入力してください' : unsupported ? '赤い文字は未対応のためスキップしました' : '');
+    status.className = `status ${limited.truncated || (!statusOverride && (kanji || unsupported)) ? 'bad' : ''}`;
+    updateKanjiButton(limited.text);
   }
-  async function updateConversion(request) {
-    const input = document.querySelector('#convert-input').value;
-    if (!KANJI_PATTERN.test(input)) { renderConversion(convertText(input)); return; }
-    if (tokenizerFailed) { renderConversion(convertText(input)); return; }
-    renderConversion(convertText(input), '漢字の読みを準備中…（初回のみ約6MB）');
+  function updateConversion(request) {
+    const limited = limitedConversionInput();
+    const input = limited.text;
+    if (request !== conversionRequest) return;
+    if (!KANJI_PATTERN.test(input) || !tokenizer) { renderConversion(convertText(input)); return; }
+    const normalized = input.normalize('NFKC').replace(/[、。]/g, ' ').replace(/？/g, '?').replace(/！/g, '!');
+    renderConversion(convertTokenizedText(input, tokenizer.tokenize(normalized)));
+  }
+  async function readKanji() {
+    const button = document.querySelector('#read-kanji');
+    const input = limitedConversionInput().text;
+    if (!KANJI_PATTERN.test(input)) return;
+    button.disabled = true;
+    button.textContent = '読み込み中…';
     try {
       const activeTokenizer = await loadTokenizer();
-      if (request !== conversionRequest || input !== document.querySelector('#convert-input').value) return;
       runKanjiSelfTests(activeTokenizer);
-      const normalized = input.normalize('NFKC').replace(/[、。]/g, ' ').replace(/？/g, '?').replace(/！/g, '!');
-      renderConversion(convertTokenizedText(input, activeTokenizer.tokenize(normalized)));
+      updateConversion(conversionRequest);
     } catch (error) {
       console.warn('漢字の読み込み:', error.message);
-      if (request === conversionRequest) renderConversion(convertText(input));
+      renderConversion(convertText(limitedConversionInput().text), '辞書を読み込めませんでした');
+    } finally {
+      button.disabled = false;
+      button.textContent = '漢字を読む（辞書 約6MB・初回は時間がかかります）';
+      updateKanjiButton(limitedConversionInput().text);
     }
   }
   function scheduleConversion() {
@@ -781,14 +796,22 @@ window.addEventListener('unhandledrejection', function (e) { window.showFatalErr
     document.querySelector('#convert-status').className = 'status';
     const epoch = audioEpoch;
     const unit = unitMs();
-    let cursor = 0;
     beginSignalPlayback(epoch);
-    conversion.morseTokens.forEach((token, tokenIndex) => {
-      if (token.char === ' ') { cursor += unit * 7; return; }
-      later(() => {
+    const tokens = conversion.morseTokens.slice();
+    function playNext(tokenIndex) {
+      if (epoch !== audioEpoch || mode !== 'convert') return;
+      if (tokenIndex >= tokens.length) {
+        clearConvertHighlights();
         document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
-        highlightConversion(tokenIndex);
-      }, cursor);
+        document.querySelector('#convert-status').textContent = '再生しました';
+        endSignalPlayback(epoch);
+        return;
+      }
+      const token = tokens[tokenIndex];
+      if (token.char === ' ') { later(() => playNext(tokenIndex + 1), unit * 7); return; }
+      document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
+      highlightConversion(tokenIndex);
+      let cursor = 0;
       [...token.code].forEach((mark, markIndex) => {
         const duration = mark === '.' ? unit : unit * 3;
         const stepLetter = /^[A-Z]$/.test(token.char) ? reverse[token.code.slice(0, markIndex + 1)] : null;
@@ -800,13 +823,9 @@ window.addEventListener('unhandledrejection', function (e) { window.showFatalErr
         cursor += unit;
       });
       cursor += unit * 2;
-    });
-    later(() => {
-      clearConvertHighlights();
-      document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
-      document.querySelector('#convert-status').textContent = '再生しました';
-      endSignalPlayback(epoch);
-    }, cursor);
+      later(() => playNext(tokenIndex + 1), cursor);
+    }
+    playNext(0);
   }
   async function copyConversion() {
     const text = morseString(conversion, document.querySelector('#ascii-notation').checked);
@@ -1257,6 +1276,7 @@ window.addEventListener('unhandledrejection', function (e) { window.showFatalErr
     });
 
     document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
+    document.querySelector('#read-kanji').addEventListener('click', readKanji);
     document.querySelector('#play-convert').addEventListener('click', playConversion);
     document.querySelector('#stop-convert').addEventListener('click', () => {
     clearTimersAndLights();
@@ -1270,8 +1290,7 @@ window.addEventListener('unhandledrejection', function (e) { window.showFatalErr
   const safeValidate = () => {
     try { validateModel(); } catch (error) { reportStartupError('配置チェック', error); }
   };
-  safeValidate();
-  if (document.fonts?.ready) document.fonts.ready.then(safeValidate).catch(error => reportStartupError('フォント読み込み後の配置チェック', error));
+  if (location.search.includes('debug') && document.fonts?.ready) document.fonts.ready.then(safeValidate).catch(error => reportStartupError('フォント読み込み後の配置チェック', error));
   try {
     document.querySelector('#key-prompt').textContent = keyPrompt;
     if (mode === 'explore') node('E')?.classList.add('active');
