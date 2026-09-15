@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0">
+<title>MORSE TAG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&family=Saira+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --ground: #0A0D13;
+    --plate: #151B2B;
+    --silk: #D8DDE5;
+    --edge: #8E97A3;
+    --led-on: #43E36F;
+    --led-off: #25352C;
+    --error: #FF5A5A;
+    --panel: #111722;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-width: 280px;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: var(--ground);
+    color: var(--silk);
+    font-family: "Noto Sans JP", system-ui, sans-serif;
+  }
+  button, input { font: inherit; }
+  button { color: inherit; }
+  button:focus-visible, input:focus-visible {
+    outline: 3px solid var(--led-on);
+    outline-offset: 3px;
+  }
+  .app {
+    width: 100%;
+    max-width: 520px;
+    min-width: 0;
+    margin: 0 auto;
+    padding: 14px 12px 32px;
+  }
+  .app-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 2px 4px 12px;
+  }
+  .app-header > *, .prompt-row > *, .quiz-row > * { min-width: 0; }
+  h1 {
+    margin: 0;
+    font: 700 clamp(1.55rem, 7vw, 2.25rem)/1 "Saira Semi Condensed", sans-serif;
+    letter-spacing: .12em;
+  }
+  .tagline { margin: 0; color: var(--edge); font-size: .7rem; letter-spacing: .08em; }
+  .plate-wrap { position: relative; width: 100%; min-width: 0; }
+  #plate { display: block; width: 100%; max-width: 100%; height: auto; max-height: 48vh; max-height: 48svh; margin: 0 auto; filter: drop-shadow(0 18px 24px #0009); }
+  .plate-edge { fill: var(--plate); stroke: var(--edge); stroke-width: 3; }
+  .plate-inner { fill: none; stroke: #323b4d; stroke-width: 1; }
+  .plate-title { fill: var(--silk); font: 600 25px "Saira Semi Condensed", sans-serif; letter-spacing: 5px; }
+  .plate-subtitle { fill: var(--edge); font: 600 10px "IBM Plex Mono", monospace; letter-spacing: 4px; }
+  .antenna, .branch { fill: none; stroke: var(--edge); stroke-width: 2; stroke-linecap: round; }
+  .branch { opacity: .74; }
+  .hanger-rim { fill: #080b11; stroke: var(--edge); stroke-width: 4; }
+  .hanger-hole { fill: var(--ground); stroke: #4a5361; stroke-width: 2; }
+  .morse-node { cursor: pointer; }
+  .morse-node .lamp { fill: var(--led-off); stroke: #617068; stroke-width: 1.4; transition: fill .14s, filter .14s, stroke .14s; }
+  .morse-node .node-label { fill: var(--silk); font: 600 18px "Saira Semi Condensed", sans-serif; pointer-events: none; }
+  .morse-node:hover .lamp, .morse-node:focus .lamp { stroke: var(--silk); }
+  .morse-node.active .lamp {
+    fill: var(--led-on);
+    stroke: #baffc6;
+    filter: url(#greenGlow);
+  }
+  .morse-node.error .lamp { fill: var(--error); stroke: #ffc0c0; filter: url(#redGlow); }
+  .morse-node:focus-visible .lamp { stroke: var(--silk); stroke-width: 3; }
+  .node-hit { fill: transparent; stroke: none; }
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    padding: 5px;
+    margin-top: 14px;
+    border: 1px solid #2a3342;
+    border-radius: 14px;
+    background: #0d121b;
+  }
+  .tab {
+    min-width: 0;
+    min-height: 45px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--edge);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: #233027; color: var(--led-on); }
+  .panel {
+    min-width: 0;
+    margin-top: 10px;
+    padding: 16px;
+    min-height: 178px;
+    border: 1px solid #293141;
+    border-radius: 16px;
+    background: var(--panel);
+  }
+  .panel[hidden] { display: none; }
+  .eyebrow { margin: 0 0 5px; color: var(--edge); font-size: .72rem; letter-spacing: .1em; }
+  .instruction { margin: 5px 0 0; color: #aeb6c1; font-size: .78rem; line-height: 1.65; }
+  .readout {
+    min-height: 52px;
+    margin: 0;
+    color: var(--led-on);
+    font: 600 clamp(2rem, 10vw, 3.1rem)/1.15 "IBM Plex Mono", monospace;
+    letter-spacing: .15em;
+  }
+  .readout .letter { color: var(--silk); font-family: "Saira Semi Condensed", sans-serif; }
+  .prompt-row, .quiz-row, .stats { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .prompt-letter { color: var(--silk); font: 700 2.5rem/1 "Saira Semi Condensed", sans-serif; }
+  .key {
+    width: 100%;
+    min-height: 78px;
+    margin-top: 12px;
+    border: 1px solid #647167;
+    border-bottom-width: 5px;
+    border-radius: 16px;
+    background: #1c2820;
+    color: var(--led-on);
+    font-weight: 700;
+    letter-spacing: .08em;
+    touch-action: none;
+    cursor: pointer;
+    user-select: none;
+  }
+  .key.is-down { transform: translateY(3px); border-bottom-width: 2px; background: #29402f; }
+  .action {
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid #596475;
+    border-radius: 10px;
+    background: #222b39;
+    cursor: pointer;
+  }
+  .status { min-height: 1.5em; margin: 10px 0 0; font-size: .82rem; color: #b9c0ca; }
+  .status.good { color: var(--led-on); }
+  .status.bad { color: var(--error); }
+  .stats { margin-top: 14px; padding-top: 12px; border-top: 1px solid #293141; font-size: .8rem; }
+  .stats strong { font-family: "IBM Plex Mono", monospace; color: var(--silk); }
+  details {
+    margin-top: 10px;
+    border: 1px solid #293141;
+    border-radius: 14px;
+    background: #0e141e;
+  }
+  summary { padding: 13px 15px; font-weight: 700; cursor: pointer; }
+  .settings { display: grid; gap: 14px; padding: 3px 15px 16px; }
+  .setting-line { display: grid; grid-template-columns: 92px 1fr 54px; align-items: center; gap: 10px; font-size: .78rem; }
+  .setting-line output { text-align: right; font-family: "IBM Plex Mono", monospace; color: var(--led-on); }
+  input[type="range"] { width: 100%; min-width: 0; accent-color: var(--led-on); }
+  .switch-line { display: flex; justify-content: space-between; align-items: center; font-size: .78rem; }
+  .switch-line input { width: 20px; height: 20px; accent-color: var(--led-on); }
+  @media (max-width: 360px) {
+    .app { padding-inline: 7px; }
+    .panel { padding: 13px; }
+    .tagline { display: none; }
+  }
+  @media (max-width: 430px) {
+    .app-header { gap: 8px; }
+    h1 { font-size: clamp(1.35rem, 6.2vw, 1.6rem); }
+    .tagline { font-size: .65rem; }
+  }
+  @media (max-width: 420px) and (max-height: 700px) {
+    .app { padding-top: 8px; padding-bottom: 12px; }
+    .app-header { margin-bottom: 6px; }
+    .tabs { margin-top: 8px; padding: 4px; }
+    .tab { min-height: 38px; }
+    .panel { min-height: 145px; margin-top: 6px; padding: 10px 12px; }
+    .readout { min-height: 40px; }
+    .key { min-height: 58px; margin-top: 6px; }
+    .instruction { line-height: 1.4; }
+    .status { margin-top: 6px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+
+<main class="app">
+  <header class="app-header">
+    <h1>MORSE TAG</h1>
+    <p class="tagline">光でたどる、音で覚える</p>
+  </header>
+
+  <div class="plate-wrap">
+    <svg id="plate" viewBox="0 0 520 760" role="img" aria-labelledby="plate-name plate-desc">
+      <title id="plate-name">モールス符号の二分木プレート</title>
+      <desc id="plate-desc">左に長音で始まる文字、右に短点で始まる文字を配置した練習用プレート</desc>
+      <defs>
+        <filter id="greenGlow" x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="6" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="redGlow" x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <rect class="plate-edge" x="6" y="6" width="508" height="748" rx="34"/>
+      <rect class="plate-inner" x="14" y="14" width="492" height="732" rx="27"/>
+      <circle class="hanger-rim" cx="469" cy="52" r="23"/><circle class="hanger-hole" cx="469" cy="52" r="11"/>
+      <text class="plate-title" x="42" y="58">MORSE</text>
+      <text class="plate-subtitle" x="414" y="78" text-anchor="end">CODE</text>
+      <g aria-hidden="true">
+        <path class="antenna" d="M260 146V111M246 124a20 20 0 0 1 28 0M236 114a34 34 0 0 1 48 0"/>
+        <circle cx="260" cy="146" r="4" fill="#D8DDE5"/>
+      </g>
+      <g id="branches" aria-hidden="true"></g>
+      <g id="nodes"></g>
+    </svg>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="練習モード">
+    <button class="tab" id="tab-explore" role="tab" aria-selected="true" aria-controls="panel-explore" data-mode="explore">さわる</button>
+    <button class="tab" id="tab-key" role="tab" aria-selected="false" aria-controls="panel-key" data-mode="key">打つ</button>
+    <button class="tab" id="tab-quiz" role="tab" aria-selected="false" aria-controls="panel-quiz" data-mode="quiz">聞く</button>
+  </nav>
+
+  <section class="panel" id="panel-explore" role="tabpanel" aria-labelledby="tab-explore">
+    <p class="eyebrow">選んだ文字</p>
+    <p class="readout"><span class="letter" id="explore-letter">E</span>&nbsp; <span id="explore-code">・</span></p>
+    <p class="instruction">プレートの文字を押すと、根から光と音が順番にたどります。</p>
+  </section>
+
+  <section class="panel" id="panel-key" role="tabpanel" aria-labelledby="tab-key" hidden>
+    <div class="prompt-row">
+      <div><p class="eyebrow">お題</p><div class="prompt-letter" id="key-prompt">A</div></div>
+      <div><p class="eyebrow">入力</p><p class="readout" id="key-code">—</p></div>
+    </div>
+    <button class="key" id="telegraph-key" type="button">長さを変えて押す</button>
+    <p class="instruction">短く押すと「・」、長く押すと「－」。スペースキーでも打てます。</p>
+    <p class="status" id="key-status" aria-live="polite"></p>
+  </section>
+
+  <section class="panel" id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden>
+    <div class="quiz-row">
+      <div><p class="eyebrow">音を聞いて文字を選ぶ</p><p class="readout" id="quiz-mark">？？</p></div>
+      <button class="action" id="play-quiz" type="button">問題を出す</button>
+    </div>
+    <p class="status" id="quiz-status" aria-live="polite">「問題を出す」を押してください。</p>
+    <div class="stats"><span>正答率 <strong id="accuracy">—</strong></span><span>連続正解 <strong id="streak">0</strong></span></div>
+  </section>
+
+  <details>
+    <summary>音と練習の設定</summary>
+    <div class="settings">
+      <label class="setting-line"><span>速度</span><input id="wpm" type="range" min="5" max="30" value="20"><output id="wpm-out">20 WPM</output></label>
+      <label class="setting-line"><span>周波数</span><input id="frequency" type="range" min="400" max="900" step="25" value="600"><output id="frequency-out">600 Hz</output></label>
+      <label class="switch-line"><span>音を鳴らす</span><input id="sound-on" type="checkbox" checked></label>
+      <label class="switch-line"><span>聞くモードで光を表示</span><input id="quiz-light" type="checkbox" checked></label>
+    </div>
+  </details>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // A–Z の唯一の符号表。描画・経路・判定はすべてこの表から導出する。
+  const MORSE = Object.freeze({
+    A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.',
+    H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--', N: '-.',
+    O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-',
+    V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..'
+  });
+
+  // 写真のレイアウト座標。path は上の符号表と起動時に照合する。
+  const POS = Object.freeze({
+    O:[58,192], M:[126,192], T:[198,192], E:[322,192], I:[388,192], S:[448,192], H:[492,192],
+    G:[126,282], Q:[58,282], Z:[126,340], N:[198,420], K:[126,420], Y:[58,420], C:[126,500],
+    D:[198,580], X:[126,580], B:[198,670], U:[388,282], F:[388,340], V:[448,282],
+    A:[322,420], R:[400,420], L:[474,420], W:[322,580], P:[400,580], J:[322,670]
+  });
+  const reverse = Object.fromEntries(Object.entries(MORSE).map(([letter, code]) => [code, letter]));
+  const root = [260,146];
+  const nodesLayer = document.querySelector('#nodes');
+  const branchesLayer = document.querySelector('#branches');
+  const NS = 'http://www.w3.org/2000/svg';
+  const timers = new Set();
+  const activeSounds = new Set();
+  let mode = 'explore';
+  let audioContext = null;
+  let audioEpoch = 0;
+  let heldSound = null;
+  let keyDownAt = 0;
+  let keySequence = '';
+  let keyFinalizeTimer = 0;
+  let keyNextTimer = 0;
+  let keyFinalizing = false;
+  let keyPrompt = randomLetter();
+  let quizTarget = null;
+  let quizTotal = 0;
+  let quizCorrect = 0;
+  let streak = 0;
+
+  let progress = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, { correct: 0, wrong: 0 }]));
+  try {
+    const saved = JSON.parse(localStorage.getItem('morse-tag-progress'));
+    if (saved && typeof saved === 'object') {
+      for (const letter of Object.keys(MORSE)) {
+        if (saved[letter]) progress[letter] = { correct: Number(saved[letter].correct)||0, wrong: Number(saved[letter].wrong)||0 };
+      }
+    }
+  } catch (_) {}
+
+  function svg(name, attrs = {}) {
+    const el = document.createElementNS(NS, name);
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
+    return el;
+  }
+
+  function direction(from, to) {
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  }
+
+  function layoutGeometry() {
+    const connected = Object.fromEntries(Object.keys(MORSE).map(letter => [letter, new Set()]));
+    for (const [letter, code] of Object.entries(MORSE)) {
+      const parent = reverse[code.slice(0, -1)];
+      if (!parent) continue;
+      connected[letter].add(direction(POS[letter], POS[parent]));
+      connected[parent].add(direction(POS[parent], POS[letter]));
+    }
+    const labels = {};
+    const hits = {};
+    for (const [letter, [x, y]] of Object.entries(POS)) {
+      const side = letter === 'Z' ? 'right' : ['down', 'up', 'right', 'left'].find(candidate => !connected[letter].has(candidate));
+      if (!side) throw new Error(`${letter}: ラベルを置ける方向がありません。`);
+      const label = side === 'down' ? { x, y: y + 42, anchor: 'middle' } :
+        side === 'up' ? { x, y: y - 27, anchor: 'middle' } :
+        side === 'right' ? { x: x + 25, y: y + 6, anchor: 'start' } :
+        { x: x - 25, y: y + 6, anchor: 'end' };
+      const halfWidth = Math.max(10, Math.min(20, x - 15, 505 - x));
+      labels[letter] = label;
+      hits[letter] = { left: x - halfWidth, right: x + halfWidth, top: y - 22, bottom: y + 22 };
+    }
+    return { connected, labels, hits };
+  }
+
+  function buildPlate() {
+    const geometry = layoutGeometry();
+    for (const [letter, code] of Object.entries(MORSE)) {
+      const [x, y] = POS[letter];
+      const parentCode = code.slice(0, -1);
+      const parentLetter = reverse[parentCode];
+      const [px, py] = parentLetter ? POS[parentLetter] : root;
+      branchesLayer.append(svg('line', { class: 'branch', x1: px, y1: py, x2: x, y2: y }));
+
+      const group = svg('g', {
+        class: 'morse-node', id: `node-${letter}`, role: 'button', tabindex: '0',
+        'aria-label': `${letter}、${spokenCode(code)}`, 'data-letter': letter
+      });
+      const isDash = code.endsWith('-');
+      const vertical = letter === 'J';
+      const hit = geometry.hits[letter];
+      group.append(svg('rect', { class: 'node-hit', x: hit.left, y: hit.top, width: hit.right-hit.left, height: hit.bottom-hit.top, rx: 10 }));
+      if (isDash) {
+        group.append(svg('rect', { class: 'lamp', x: x-(vertical?7:15), y: y-(vertical?15:7), width: vertical?14:30, height: vertical?30:14, rx: 7 }));
+      } else {
+        group.append(svg('circle', { class: 'lamp', cx: x, cy: y, r: 9 }));
+      }
+      const label = geometry.labels[letter];
+      const text = svg('text', { class: 'node-label', x: label.x, y: label.y, 'text-anchor': label.anchor });
+      text.textContent = letter;
+      group.append(text);
+      nodesLayer.append(group);
+    }
+  }
+
+  function validateModel() {
+    const letters = Object.keys(MORSE);
+    const unique = new Set(Object.values(MORSE));
+    const layout = Object.keys(POS);
+    if (letters.length !== 26 || unique.size !== 26 || layout.length !== 26 ||
+        letters.some(letter => !POS[letter]) || layout.some(letter => !MORSE[letter])) {
+      throw new Error('符号表とプレート配置の文字集合が整合していません。');
+    }
+    for (const letter of letters) {
+      const code = MORSE[letter];
+      for (let i = 0; i < code.length; i++) {
+        if (!reverse[code.slice(0, i + 1)]) throw new Error(`${letter}: 親経路が符号表にありません。`);
+      }
+    }
+    const at = new Map();
+    for (const [letter, position] of Object.entries(POS)) {
+      const key = position.join(',');
+      if (at.has(key)) throw new Error(`${letter}: ${at.get(key)} と座標が重複しています。`);
+      at.set(key, letter);
+    }
+    for (const [letter, code] of Object.entries(MORSE)) {
+      if (code.length === 1) continue;
+      const parent = reverse[code.slice(0, -1)];
+      const actual = direction(POS[parent], POS[letter]);
+      const mark = code.at(-1);
+      const expected = code[0] === '.' ? (mark === '.' ? 'right' : 'down') : (mark === '-' ? 'left' : 'down');
+      if (actual !== expected && !(letter === 'F' && actual === 'down')) {
+        throw new Error(`${letter}: 親 ${parent} からの方向が ${actual}（期待値 ${expected}）です。`);
+      }
+    }
+    const { labels, hits } = layoutGeometry();
+    const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    const labelBoxes = {};
+    for (const [letter, label] of Object.entries(labels)) {
+      const rendered = node(letter).querySelector('.node-label').getBBox();
+      const box = labelBoxes[letter] = {
+        left: rendered.x, right: rendered.x + rendered.width,
+        top: rendered.y, bottom: rendered.y + rendered.height
+      };
+      for (const [other, hit] of Object.entries(hits)) {
+        if (other !== letter && overlaps(box, hit)) throw new Error(`${letter}: ラベルが ${other} の当たり判定と重なっています。`);
+      }
+    }
+    for (const [letter, box] of Object.entries(labelBoxes)) {
+      for (const [other, otherBox] of Object.entries(labelBoxes)) {
+        if (letter < other && overlaps(box, otherBox)) throw new Error(`${letter}: ${other} とラベルが重なっています。`);
+      }
+    }
+    for (const [letter, hit] of Object.entries(hits)) {
+      if (hit.left < 15 || hit.right > 505) throw new Error(`${letter}: 当たり判定が板の外です。`);
+      for (const [other, otherHit] of Object.entries(hits)) {
+        if (letter < other && overlaps(hit, otherHit)) throw new Error(`${letter}: ${other} と当たり判定が重なっています。`);
+      }
+    }
+    return true;
+  }
+
+  function spokenCode(code) { return code.replaceAll('.', '短点、').replaceAll('-', '長音、').replace(/、$/, ''); }
+  function displayCode(code) { return code.replaceAll('.', '・').replaceAll('-', '－'); }
+  function unitMs() { return 1200 / Number(document.querySelector('#wpm').value); }
+  function randomLetter() { return String.fromCharCode(65 + Math.floor(Math.random() * 26)); }
+  function node(letter) { return document.querySelector(`#node-${letter}`); }
+
+  function clearTimersAndLights() {
+    for (const id of timers) clearTimeout(id);
+    timers.clear();
+    audioEpoch++;
+    stopAllAudio();
+    document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+  }
+
+  function later(fn, delay) {
+    const id = setTimeout(() => { timers.delete(id); fn(); }, delay);
+    timers.add(id);
+    return id;
+  }
+
+  async function audio() {
+    if (!document.querySelector('#sound-on').checked) return null;
+    try {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') await audioContext.resume();
+      return audioContext;
+    } catch (_) { return null; }
+  }
+
+  function stopSound(sound) {
+    if (!sound || !activeSounds.has(sound)) return;
+    const now = sound.ctx.currentTime;
+    try {
+      sound.gain.gain.cancelScheduledValues(now);
+      sound.gain.gain.setValueAtTime(Math.max(sound.gain.gain.value, 0.0001), now);
+      sound.gain.gain.exponentialRampToValueAtTime(0.0001, now + .018);
+      sound.osc.stop(now + .025);
+    } catch (_) {}
+    activeSounds.delete(sound);
+  }
+
+  function stopAllAudio() {
+    for (const sound of [...activeSounds]) stopSound(sound);
+    heldSound = null;
+  }
+
+  async function tone(startOffset, duration, epoch = audioEpoch) {
+    const ctx = await audio();
+    if (!ctx || epoch !== audioEpoch) return;
+    const start = ctx.currentTime + startOffset / 1000;
+    const end = start + duration / 1000;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = Number(document.querySelector('#frequency').value);
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.055, start + Math.min(.012, duration / 5000));
+    gain.gain.setValueAtTime(0.055, Math.max(start + .013, end - .018));
+    gain.gain.exponentialRampToValueAtTime(0.0001, end);
+    osc.connect(gain).connect(ctx.destination);
+    const sound = { ctx, osc, gain };
+    activeSounds.add(sound);
+    osc.onended = () => activeSounds.delete(sound);
+    osc.start(start); osc.stop(end + .01);
+  }
+
+  async function startHeldTone(epoch) {
+    const ctx = await audio();
+    if (!ctx || epoch !== audioEpoch || !keyDownAt || mode !== 'key') return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    osc.frequency.value = Number(document.querySelector('#frequency').value);
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.055, now + .012);
+    osc.connect(gain).connect(ctx.destination);
+    const sound = { ctx, osc, gain };
+    activeSounds.add(sound);
+    osc.onended = () => activeSounds.delete(sound);
+    osc.start(now);
+    heldSound = sound;
+  }
+
+  function playPath(letter, showLight = true) {
+    clearTimersAndLights();
+    const epoch = audioEpoch;
+    const code = MORSE[letter];
+    const unit = unitMs();
+    let cursor = 0;
+    [...code].forEach((mark, i) => {
+      const duration = mark === '.' ? unit : unit * 3;
+      const stepLetter = reverse[code.slice(0, i + 1)];
+      if (showLight) later(() => node(stepLetter)?.classList.add('active'), cursor);
+      tone(cursor, duration, epoch);
+      cursor += duration;
+      if (showLight) later(() => node(stepLetter)?.classList.remove('active'), cursor);
+      cursor += unit;
+    });
+    if (showLight) later(() => node(letter)?.classList.add('active'), cursor);
+    return cursor;
+  }
+
+  function onNodeChoose(letter) {
+    if (mode === 'explore') {
+      document.querySelector('#explore-letter').textContent = letter;
+      document.querySelector('#explore-code').textContent = displayCode(MORSE[letter]);
+      playPath(letter, true);
+    } else if (mode === 'quiz' && quizTarget) {
+      clearTimersAndLights();
+      const correct = letter === quizTarget;
+      quizTotal++;
+      if (correct) { quizCorrect++; streak++; progress[quizTarget].correct++; }
+      else { streak = 0; progress[quizTarget].wrong++; flashError(letter); }
+      saveProgress();
+      document.querySelector('#quiz-status').textContent = correct ? `正解。${quizTarget} は ${displayCode(MORSE[quizTarget])}` : `違います。正解は ${quizTarget}（${displayCode(MORSE[quizTarget])}）`;
+      document.querySelector('#quiz-status').className = `status ${correct ? 'good' : 'bad'}`;
+      document.querySelector('#quiz-mark').textContent = displayCode(MORSE[quizTarget]);
+      document.querySelector('#accuracy').textContent = `${Math.round(quizCorrect / quizTotal * 100)}%`;
+      document.querySelector('#streak').textContent = streak;
+      node(quizTarget)?.classList.add('active');
+      quizTarget = null;
+      document.querySelector('#play-quiz').textContent = '次の問題';
+    }
+  }
+
+  function flashError(letter) {
+    const el = node(letter);
+    if (!el) return;
+    el.classList.add('error');
+    later(() => el.classList.remove('error'), 430);
+  }
+
+  function saveProgress() {
+    try { localStorage.setItem('morse-tag-progress', JSON.stringify(progress)); } catch (_) {}
+  }
+
+  function chooseWeightedQuestion() {
+    const bag = [];
+    for (const letter of Object.keys(MORSE)) {
+      const score = progress[letter];
+      const weight = Math.max(1, 2 + score.wrong * 3 - score.correct);
+      for (let i = 0; i < Math.min(weight, 12); i++) bag.push(letter);
+    }
+    return bag[Math.floor(Math.random() * bag.length)];
+  }
+
+  function beginKey() {
+    if (keyDownAt || keyFinalizing) return;
+    keyDownAt = performance.now();
+    document.querySelector('#telegraph-key').classList.add('is-down');
+    document.querySelector('#telegraph-key').setAttribute('aria-pressed', 'true');
+    if (keyFinalizeTimer) clearTimeout(keyFinalizeTimer);
+    keyFinalizeTimer = 0;
+    startHeldTone(audioEpoch);
+  }
+
+  function endKey() {
+    if (!keyDownAt) return;
+    const held = performance.now() - keyDownAt;
+    keyDownAt = 0;
+    const unit = unitMs();
+    const mark = held >= Math.max(unit * 2, 150) ? '-' : '.';
+    document.querySelector('#telegraph-key').classList.remove('is-down');
+    document.querySelector('#telegraph-key').setAttribute('aria-pressed', 'false');
+    stopSound(heldSound);
+    heldSound = null;
+    keySequence += mark;
+    document.querySelector('#key-code').textContent = displayCode(keySequence);
+    clearTimersAndLights();
+    const current = reverse[keySequence];
+    const isPrefix = Object.values(MORSE).some(code => code.startsWith(keySequence));
+    if (!isPrefix) {
+      document.querySelector('#key-status').textContent = 'その経路はありません。もう一度どうぞ。';
+      document.querySelector('#key-status').className = 'status bad';
+      for (const el of document.querySelectorAll('.morse-node')) el.classList.add('error');
+      later(resetKeySequence, 500);
+      return;
+    }
+    if (current) node(current)?.classList.add('active');
+    keyFinalizeTimer = setTimeout(finalizeKey, Math.max(unit * 5, 700));
+  }
+
+  function cancelKeyPress() {
+    keyDownAt = 0;
+    document.querySelector('#telegraph-key').classList.remove('is-down');
+    document.querySelector('#telegraph-key').setAttribute('aria-pressed', 'false');
+    stopSound(heldSound);
+    heldSound = null;
+  }
+
+  function resetKeySequence() {
+    keySequence = '';
+    document.querySelector('#key-code').textContent = '—';
+    document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
+  }
+
+  function finalizeKey() {
+    const sequence = keySequence;
+    keySequence = '';
+    keyFinalizeTimer = 0;
+    keyFinalizing = true;
+    const answer = reverse[sequence];
+    const correct = answer === keyPrompt;
+    if (answer) {
+      progress[keyPrompt][correct ? 'correct' : 'wrong']++;
+      saveProgress();
+      document.querySelector('#key-status').textContent = correct ? `正解。${answer} です。` : `${answer} でした。お題は ${keyPrompt} です。`;
+      document.querySelector('#key-status').className = `status ${correct ? 'good' : 'bad'}`;
+      if (!correct) flashError(answer);
+    }
+    keyNextTimer = setTimeout(() => {
+      keyNextTimer = 0;
+      keyFinalizing = false;
+      keyPrompt = randomLetter();
+      document.querySelector('#key-prompt').textContent = keyPrompt;
+      resetKeySequence();
+    }, 900);
+  }
+
+  function switchMode(next) {
+    mode = next;
+    clearTimersAndLights();
+    if (keyFinalizeTimer) clearTimeout(keyFinalizeTimer);
+    if (keyNextTimer) clearTimeout(keyNextTimer);
+    keyFinalizeTimer = 0;
+    keyNextTimer = 0;
+    keyFinalizing = false;
+    keySequence = '';
+    cancelKeyPress();
+    resetKeySequence();
+    document.querySelectorAll('.tab').forEach(tab => {
+      const selected = tab.dataset.mode === next;
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+    document.querySelectorAll('.panel').forEach(panel => panel.hidden = panel.id !== `panel-${next}`);
+    if (next === 'explore') node(document.querySelector('#explore-letter').textContent)?.classList.add('active');
+    if (next === 'key') document.querySelector('#telegraph-key').focus();
+  }
+
+  buildPlate();
+  const safeValidate = () => { try { validateModel(); } catch (error) { console.warn('配置チェック:', error.message); } };
+  safeValidate();
+  document.fonts?.ready.then(safeValidate);
+  document.querySelector('#key-prompt').textContent = keyPrompt;
+  node('E').classList.add('active');
+
+  nodesLayer.addEventListener('click', event => {
+    const target = event.target.closest('.morse-node');
+    if (target) onNodeChoose(target.dataset.letter);
+  });
+  nodesLayer.addEventListener('keydown', event => {
+    const target = event.target.closest('.morse-node');
+    if (target && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onNodeChoose(target.dataset.letter); }
+  });
+  document.querySelector('.tabs').addEventListener('click', event => {
+    const tab = event.target.closest('.tab');
+    if (tab) switchMode(tab.dataset.mode);
+  });
+  document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('keydown', event => {
+    if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+    const tabs = [...document.querySelectorAll('.tab')];
+    const delta = event.key === 'ArrowRight' ? 1 : -1;
+    const next = tabs[(tabs.indexOf(tab) + delta + tabs.length) % tabs.length];
+    switchMode(next.dataset.mode); next.focus();
+  }));
+
+  const keyButton = document.querySelector('#telegraph-key');
+  keyButton.addEventListener('pointerdown', event => { event.preventDefault(); keyButton.setPointerCapture(event.pointerId); beginKey(); });
+  keyButton.addEventListener('pointerup', endKey);
+  keyButton.addEventListener('pointercancel', cancelKeyPress);
+  window.addEventListener('keydown', event => {
+    if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) {
+      event.preventDefault();
+      if (!event.repeat) beginKey();
+    }
+  });
+  window.addEventListener('keyup', event => {
+    if (mode === 'key' && event.code === 'Space' && !['INPUT','SELECT'].includes(document.activeElement.tagName)) { event.preventDefault(); endKey(); }
+  });
+
+  document.querySelector('#play-quiz').addEventListener('click', () => {
+    if (!quizTarget) quizTarget = chooseWeightedQuestion();
+    document.querySelector('#quiz-mark').textContent = '？？';
+    document.querySelector('#quiz-status').textContent = '再生中。文字を選んでください。';
+    document.querySelector('#quiz-status').className = 'status';
+    document.querySelector('#play-quiz').textContent = 'もう一度聞く';
+    playPath(quizTarget, document.querySelector('#quiz-light').checked);
+  });
+  document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
+  document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+})();
+</script>
+
+</body>
+</html>
