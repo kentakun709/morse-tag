@@ -183,6 +183,13 @@
   input[type="range"] { width: 100%; min-width: 0; accent-color: var(--led-on); }
   .switch-line { display: flex; justify-content: space-between; align-items: center; font-size: .78rem; }
   .switch-line input { width: 20px; height: 20px; accent-color: var(--led-on); }
+  .light-status { min-height: 1.5em; margin: -8px 0 0; color: #aeb6c1; font-size: .72rem; line-height: 1.5; }
+  #screen-flash {
+    position: fixed; inset: 0; z-index: 9999; display: none;
+    background: transparent; cursor: pointer; touch-action: manipulation;
+  }
+  #screen-flash.running { display: block; }
+  #screen-flash.on { background: #fff; }
   @media (max-width: 360px) {
     .app { padding-inline: 7px; }
     .panel { padding: 13px; }
@@ -298,9 +305,13 @@
       <label class="setting-line"><span>周波数</span><input id="frequency" type="range" min="400" max="900" step="25" value="600"><output id="frequency-out">600 Hz</output></label>
       <label class="switch-line"><span>音を鳴らす</span><input id="sound-on" type="checkbox" checked></label>
       <label class="switch-line"><span>聞くモードで光を表示</span><input id="quiz-light" type="checkbox" checked></label>
+      <label class="switch-line"><span>光で送る</span><input id="signal-light" type="checkbox"></label>
+      <p class="light-status" id="light-status" aria-live="polite">オフ</p>
     </div>
   </details>
 </main>
+
+<div id="screen-flash" role="button" tabindex="-1" aria-label="画面フラッシュを停止"></div>
 
 <script>
 (() => {
@@ -373,6 +384,13 @@
   let convertDebounceTimer = 0;
   let conversionRequest = 0;
   let kanjiTestsRun = false;
+  let lightStream = null;
+  let lightTrack = null;
+  let lightMethod = 'off';
+  let lightEpoch = 0;
+  let wakeLock = null;
+  let lightInitializing = false;
+  let flashWarningAccepted = false;
   const KANJI_PATTERN = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff々〆〇]/u;
   const KUROMOJI_SCRIPT = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.js';
   const KUROMOJI_DIC = 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/';
@@ -691,7 +709,7 @@
     const input = document.querySelector('#convert-input').value;
     if (!KANJI_PATTERN.test(input)) { renderConversion(convertText(input)); return; }
     if (tokenizerFailed) { renderConversion(convertText(input)); return; }
-    renderConversion(convertText(input), '漢字の読みを準備中…（初回のみ約15MB）');
+    renderConversion(convertText(input), '漢字の読みを準備中…（初回のみ約6MB）');
     try {
       const activeTokenizer = await loadTokenizer();
       if (request !== conversionRequest || input !== document.querySelector('#convert-input').value) return;
@@ -725,6 +743,7 @@
     const epoch = audioEpoch;
     const unit = unitMs();
     let cursor = 0;
+    beginSignalPlayback(epoch);
     conversion.morseTokens.forEach((token, tokenIndex) => {
       if (token.char === ' ') { cursor += unit * 7; return; }
       later(() => {
@@ -736,6 +755,7 @@
         const stepLetter = /^[A-Z]$/.test(token.char) ? reverse[token.code.slice(0, markIndex + 1)] : null;
         if (stepLetter) later(() => node(stepLetter)?.classList.add('active'), cursor);
         tone(cursor, duration, epoch);
+        scheduleSignal(cursor, duration, epoch);
         cursor += duration;
         if (stepLetter) later(() => node(stepLetter)?.classList.remove('active'), cursor);
         cursor += unit;
@@ -746,6 +766,7 @@
       clearConvertHighlights();
       document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active'));
       document.querySelector('#convert-status').textContent = '再生しました';
+      endSignalPlayback(epoch);
     }, cursor);
   }
   async function copyConversion() {
@@ -770,6 +791,7 @@
     timers.clear();
     audioEpoch++;
     stopAllAudio();
+    endSignalPlayback();
     document.querySelectorAll('.morse-node').forEach(el => el.classList.remove('active', 'error'));
     clearConvertHighlights();
   }
@@ -778,6 +800,107 @@
     const id = setTimeout(() => { timers.delete(id); fn(); }, delay);
     timers.add(id);
     return id;
+  }
+
+  function setLightStatus(message) {
+    document.querySelector('#light-status').textContent = message;
+  }
+
+  function confirmScreenFlash() {
+    if (flashWarningAccepted) return true;
+    const accepted = window.confirm('強い点滅が出ます。画面フラッシュを使用しますか？');
+    if (accepted) flashWarningAccepted = true;
+    return accepted;
+  }
+
+  async function enableSignalLight() {
+    if (lightInitializing) return;
+    lightInitializing = true;
+    setLightStatus('ライトを確認中…');
+    let fallbackReason = 'この端末はライト非対応のため画面で点滅します';
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('unsupported');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (!document.querySelector('#signal-light').checked) {
+        stream.getTracks().forEach(item => item.stop());
+        return;
+      }
+      const track = stream.getVideoTracks()[0];
+      if (track?.getCapabilities?.().torch) {
+        lightStream = stream;
+        lightTrack = track;
+        lightMethod = 'torch';
+        setLightStatus('ライトで点滅します');
+        return;
+      }
+      stream.getTracks().forEach(item => item.stop());
+    } catch (error) {
+      if (error?.name === 'NotAllowedError' || error?.name === 'SecurityError') {
+        fallbackReason = 'カメラの許可が拒否されたため画面で点滅します';
+      }
+    } finally {
+      lightInitializing = false;
+    }
+    if (!document.querySelector('#signal-light').checked) return;
+    if (!confirmScreenFlash()) {
+      document.querySelector('#signal-light').checked = false;
+      lightMethod = 'off';
+      setLightStatus('画面フラッシュをキャンセルしました');
+      return;
+    }
+    lightMethod = 'screen';
+    setLightStatus(fallbackReason);
+  }
+
+  async function setSignalLight(on, epoch = lightEpoch) {
+    if (epoch !== lightEpoch || !document.querySelector('#signal-light').checked) return;
+    if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+      try { await lightTrack.applyConstraints({ advanced: [{ torch: on }] }); } catch (_) {}
+    } else if (lightMethod === 'screen') {
+      document.querySelector('#screen-flash').classList.toggle('on', on);
+    }
+  }
+
+  function scheduleSignal(startOffset, duration, epoch) {
+    if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+    later(() => setSignalLight(true, epoch), startOffset);
+    later(() => setSignalLight(false, epoch), startOffset + duration);
+  }
+
+  async function acquireWakeLock(epoch) {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      const lock = await navigator.wakeLock.request('screen');
+      if (epoch !== lightEpoch) { await lock.release(); return; }
+      wakeLock = lock;
+      lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+    } catch (_) {}
+  }
+
+  function beginSignalPlayback(epoch) {
+    if (!document.querySelector('#signal-light').checked || lightMethod === 'off') return;
+    lightEpoch = epoch;
+    if (lightMethod === 'screen') document.querySelector('#screen-flash').classList.add('running');
+    acquireWakeLock(epoch);
+  }
+
+  function endSignalPlayback(epoch = null) {
+    if (epoch !== null && epoch !== lightEpoch) return;
+    lightEpoch++;
+    if (lightMethod === 'torch' && lightTrack?.readyState === 'live') {
+      lightTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+    }
+    document.querySelector('#screen-flash').classList.remove('on', 'running');
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+
+  function disableSignalLight(message = 'オフ') {
+    endSignalPlayback();
+    if (lightStream) lightStream.getTracks().forEach(track => track.stop());
+    lightStream = null;
+    lightTrack = null;
+    lightMethod = 'off';
+    setLightStatus(message);
   }
 
   async function audio() {
@@ -850,16 +973,19 @@
     const code = MORSE[letter];
     const unit = unitMs();
     let cursor = 0;
+    beginSignalPlayback(epoch);
     [...code].forEach((mark, i) => {
       const duration = mark === '.' ? unit : unit * 3;
       const stepLetter = reverse[code.slice(0, i + 1)];
       if (showLight) later(() => node(stepLetter)?.classList.add('active'), cursor);
       tone(cursor, duration, epoch);
+      scheduleSignal(cursor, duration, epoch);
       cursor += duration;
       if (showLight) later(() => node(stepLetter)?.classList.remove('active'), cursor);
       cursor += unit;
     });
     if (showLight) later(() => node(letter)?.classList.add('active'), cursor);
+    later(() => endSignalPlayback(epoch), cursor);
     return cursor;
   }
 
@@ -1052,6 +1178,22 @@
   });
   document.querySelector('#wpm').addEventListener('input', event => document.querySelector('#wpm-out').textContent = `${event.target.value} WPM`);
   document.querySelector('#frequency').addEventListener('input', event => document.querySelector('#frequency-out').textContent = `${event.target.value} Hz`);
+  document.querySelector('#signal-light').addEventListener('change', async event => {
+    if (event.target.checked) await enableSignalLight();
+    else disableSignalLight();
+  });
+  document.querySelector('#screen-flash').addEventListener('pointerdown', () => {
+    clearTimersAndLights();
+    if (mode === 'convert') document.querySelector('#convert-status').textContent = '停止しました';
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    clearTimersAndLights();
+    if (document.querySelector('#signal-light').checked) {
+      document.querySelector('#signal-light').checked = false;
+      disableSignalLight('ページが非表示になったため停止しました');
+    }
+  });
 
   document.querySelector('#convert-input').addEventListener('input', scheduleConversion);
   document.querySelector('#play-convert').addEventListener('click', playConversion);
