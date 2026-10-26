@@ -1,5 +1,10 @@
 # CURRENT
 
+## 2026-10-26 葵
+- **phrase30-app に統合済み**（Kenta 2026-10-26「統合でいいよ」）。公開URL https://kentakun709.github.io/morse-tag/ は https://kentakun709.github.io/phrase30-app/morse.html への転送ページにした。本体の手直しは今後 phrase30-app 側で行う
+- 統合版で直した不具合: 「漢字を読む」が https の公開先で辞書を 404 にしていた（kuromoji の path.join）。統合前のこちらの版では未修正のまま（転送で使われなくなる）
+- 進み具合（localStorage の morse-tag-progress）は同じ kentakun709.github.io なので統合版にそのまま引き継がれる
+
 ## 2026-09-15 葵
 - 公開: GitHub Pages（LINE等で誰でも開けるように）。元はClaudeのArtifactで作成（ログイン必須で共有不可だった）
 - 実装=Codex、レビュー=Claude reviewer＋Codexの相見積で13件修正済み

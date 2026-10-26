@@ -1,8 +1,7 @@
-# MORSE TAG
+# MORSE TAG（転送のみ）
 
-モールス信号の二分木プレート（キーホルダー）を再現し、光と音で配置と符号を覚える練習アプリ。
-`index.html` 1ファイルだけで動く（外部読み込みは Google Fonts のみ）。GitHub Pages で公開。
+**2026-10-25 から 30フレーズアプリの「モールス」タブに統合した。**
+新しい場所: https://kentakun709.github.io/phrase30-app/morse.html （本体は `phrase30-app/morse.html`）
 
-- さわる: 文字を押すと、根から光と音が順にたどる
-- 打つ: 電鍵ボタン（PCはスペース）で入力し、木をたどって文字を確定
-- 聞く: 音だけのクイズ。間違えた文字ほど多く出る
+このリポジトリの `index.html` は、LINE 等で共有済みの https://kentakun709.github.io/morse-tag/ を切らないための転送ページだけ。
+統合前の本体（二分木プレート・電鍵・聞くクイズ・変換）は commit 9edaf8e の `index.html`。直すときは phrase30-app 側を直す。
